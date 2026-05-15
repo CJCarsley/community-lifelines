@@ -1,0 +1,130 @@
+.container {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+/* ─── Trigger button ─── */
+.trigger {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: 5px;
+  color: #fff;
+  padding: 4px 10px;
+  cursor: pointer;
+  font-size: 0.875rem;
+  font-weight: 500;
+  max-width: 260px;
+  transition: background 120ms;
+}
+
+.trigger:hover {
+  background: rgba(255, 255, 255, 0.14);
+}
+
+.trigger:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+.triggerName {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.chevron {
+  flex-shrink: 0;
+  opacity: 0.7;
+  transition: transform 150ms;
+}
+
+.chevronOpen {
+  transform: rotate(180deg);
+}
+
+/* ─── Overlay ─── */
+.overlay {
+  position: fixed;
+  z-index: 200;
+  background: #0e1c33;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 6px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
+  max-height: 70vh;
+  overflow-y: auto;
+}
+
+/* ─── Listbox ─── */
+.listBox {
+  list-style: none;
+  margin: 0;
+  padding: 4px 0;
+  outline: none;
+}
+
+/* ─── Option ─── */
+.option {
+  padding: 9px 14px;
+  cursor: pointer;
+  outline: none;
+}
+
+.optionFocused {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.optionSelected {
+  background: rgba(59, 139, 212, 0.2);
+}
+
+.optionSelected.optionFocused {
+  background: rgba(59, 139, 212, 0.3);
+}
+
+.optionName {
+  display: block;
+  color: #fff;
+  font-size: 0.875rem;
+  font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.optionMeta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+.optionDate,
+.optionCounties {
+  font-size: 0.72rem;
+  color: rgba(255, 255, 255, 0.5);
+  white-space: nowrap;
+}
+
+/* ─── Type badge ─── */
+.typeBadge {
+  display: inline-block;
+  padding: 1px 6px;
+  border-radius: 8px;
+  font-size: 0.68rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: #fff;
+  white-space: nowrap;
+}
+
+.type_hurricane  { background: #1565c0; }
+.type_wildfire   { background: #bf360c; }
+.type_flood      { background: #01579b; }
+.type_earthquake { background: #4a148c; }
+.type_tornado    { background: #37474f; }
+.type_default    { background: #455a64; }

@@ -1,0 +1,124 @@
+{
+  "app": {
+    "title": "Lifeline Dashboard",
+    "noActiveEvent": "No Active Event"
+  },
+  "common": {
+    "loading": "Loading…",
+    "error": "An error occurred. Please try again.",
+    "notAvailable": "N/A",
+    "save": "Save",
+    "cancel": "Cancel",
+    "close": "Close",
+    "confirm": "Confirm",
+    "delete": "Delete",
+    "edit": "Edit",
+    "add": "Add",
+    "search": "Search"
+  },
+  "nav": {
+    "map": "Map",
+    "mapLabel": "Map Overview",
+    "lifelineRail": "Lifeline Navigation",
+    "lifelines": "Lifelines",
+    "incidents": "Incidents"
+  },
+  "topBar": {
+    "lastUpdated": "Updated {{time}}",
+    "noEvents": "No Events Available",
+    "eventSelector": {
+      "label": "Select active event"
+    }
+  },
+  "event": {
+    "severity": {
+      "low": "Low",
+      "moderate": "Moderate",
+      "high": "High",
+      "catastrophic": "Catastrophic"
+    }
+  },
+  "lifeline": {
+    "safety-security":        { "label": "Safety and Security",    "shortLabel": "Safety" },
+    "food-hydration-shelter": { "label": "Food, Water, and Shelter","shortLabel": "Food/Hydration" },
+    "health-medical":         { "label": "Health and Medical",     "shortLabel": "Health" },
+    "water-systems":          { "label": "Water Systems",          "shortLabel": "Water" },
+    "energy":                 { "label": "Energy",                 "shortLabel": "Energy" },
+    "communications":         { "label": "Communications",         "shortLabel": "Comms" },
+    "transportation":         { "label": "Transportation",         "shortLabel": "Transport" },
+    "hazardous-material":     { "label": "Hazardous Materials",    "shortLabel": "Hazmat" },
+    "status": {
+      "unknown":  "Unknown",
+      "stable":   "Stable",
+      "minor":    "Minor",
+      "moderate": "Moderate",
+      "major":    "Major",
+      "extreme":  "Extreme"
+    },
+    "drawer": {
+      "ariaLabel":          "{{name}} lifeline details",
+      "lastUpdated":        "Updated {{time}}",
+      "notes":              "Status Notes",
+      "notesPlaceholder":   "Add notes for this lifeline…",
+      "notesEmpty":         "No notes recorded.",
+      "incidents":          "Affected Incidents",
+      "noIncidents":        "No incidents affecting this lifeline.",
+      "statusControl":      "Change Status",
+      "locateOnMap":        "Locate on map"
+    }
+  },
+  "map": {
+    "ariaLabel": "Crisis event map",
+    "loading": "Loading map…",
+    "error": "Failed to load map",
+    "toolbar": {
+      "label": "Map controls",
+      "basemap": "Cycle basemap",
+      "incidents": "Toggle incident markers",
+      "legend": "Map legend"
+    },
+    "legend": {
+      "title": "Legend",
+      "close": "Close legend",
+      "severity": {
+        "title": "Incident Severity",
+        "low": "Low",
+        "moderate": "Moderate",
+        "high": "High",
+        "catastrophic": "Catastrophic"
+      },
+      "status": {
+        "title": "Lifeline Status",
+        "unknown":  "Unknown",
+        "stable":   "Stable",
+        "minor":    "Minor",
+        "moderate": "Moderate",
+        "major":    "Major",
+        "extreme":  "Extreme"
+      }
+    }
+  },
+  "lifelines": {
+    "safety": "Safety and Security",
+    "food": "Food, Water, Shelter",
+    "health": "Health and Medical",
+    "energy": "Energy",
+    "communications": "Communications",
+    "transportation": "Transportation",
+    "hazmat": "Hazardous Materials",
+    "strip": {
+      "ariaLabel": "Lifeline status overview"
+    }
+  },
+  "incidents": {
+    "title": "Active Incidents",
+    "noIncidents": "No active incidents",
+    "impactZone": "Impact Zone"
+  },
+  "auth": {
+    "signIn": "Sign In",
+    "signOut": "Sign Out",
+    "email": "Email",
+    "password": "Password"
+  }
+}
