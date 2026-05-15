@@ -6,6 +6,7 @@ import { useListBox, useOption } from '@react-aria/listbox';
 import { DismissButton, useOverlay } from '@react-aria/overlays';
 import { Item, useListState } from 'react-stately';
 import type { ListState } from '@react-stately/list';
+import type { Key } from '@react-types/shared';
 import { useCrisisEventContext } from '@contexts/CrisisEventContext';
 import type { CrisisEvent } from '@types';
 import styles from './EventSelector.module.css';
@@ -28,7 +29,8 @@ function getTypeClass(type: string): string {
 // ─── EventOption ──────────────────────────────────────────────────────────────
 
 interface EventOptionProps {
-  item: { key: React.Key; value: CrisisEvent | null };
+  // react-aria's Key is narrower than React.Key (excludes bigint added in React 19)
+  item: { key: Key; value: CrisisEvent | null };
   state: ListState<CrisisEvent>;
 }
 
@@ -155,7 +157,7 @@ export default function EventSelector() {
               {[...state.collection].map((item) => (
                 <EventOption
                   key={item.key}
-                  item={item as { key: React.Key; value: CrisisEvent | null }}
+                  item={item as { key: Key; value: CrisisEvent | null }}
                   state={state}
                 />
               ))}
