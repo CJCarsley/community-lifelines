@@ -2,6 +2,26 @@
 
 ---
 
+## 2026-05-18 — GitHub + Amplify Hosting Live
+
+**GitHub**: `https://github.com/CJCarsley/community-lifelines` (canonical casing — the lowercase `cjcarsley/...` form 301-redirects). Initial commit `2874664`, hosting commit `29997ef`. Default branch `main`. Local `~/.gitconfig` (at `U:\.gitconfig`) has `user.name=CJCarsley`, `user.email=CJCarsley@dotcomm.org` — same identity used on warming-cooling-centers.
+
+**Amplify Hosting**: Connected to `main`, frontend-only (no backend yet). `amplify.yml` at root drives the build:
+```yaml
+preBuild: npm ci --legacy-peer-deps
+build:    NODE_OPTIONS=--max-old-space-size=7168 npm run build
+artifacts: dist/**
+```
+The heap-size flag is mandatory for the @arcgis/core build — without it Amplify's default 4GB build runner OOMs. SPA rewrite rule (the regex one targeting `/index.html` with status `200`) added in the Console post-deploy so deep links don't 404.
+
+**Pre-existing TS error fixed in this push** (`29997ef`): `EventSelector.tsx` was typing `item.key` as `React.Key`. React 19 types added `bigint` to `React.Key`, which is wider than `@react-types/shared` `Key` (`string | number`). Fix: import `Key` from `@react-types/shared` and use it at both the props type and the cast site (line 160). Pattern to remember if any new react-aria/react-stately wrapper code shows the same error.
+
+**.gitignore additions this session**: `.idea/` (JetBrains workspace). Existing entries already covered `node_modules`, `dist`, `.env`, `.env.local`, `amplify_outputs.json`.
+
+**Backend status**: still not configured. App runs on `USE_MOCK_DATA = true` (mockData.ts). When auth/API are needed, follow the warming-cooling-centers pattern (Gen 2 `amplify/backend.ts` + `backend:` phase in amplify.yml + `npm install --prefix amplify --legacy-peer-deps` and `ampx pipeline-deploy --branch $AWS_BRANCH --app-id $AWS_APP_ID`).
+
+---
+
 ## 2026-05-15 — Official Lifeline Graphics Overhaul
 
 **What changed**: Replaced the LifelineStrip pill buttons AND the left-side icon rail with a single top-of-page strip of 8 large (~88px) official Nebraska lifeline graphics, halo color driven by status.
