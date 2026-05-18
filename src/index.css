@@ -1,0 +1,31 @@
+/* Global page lock — no scroll/pan/zoom on the document itself.
+   Internal scroll containers (e.g. the lifeline drawer body) opt back in. */
+html,
+body {
+  margin: 0;
+  padding: 0;
+  height: 100%;
+  width: 100%;
+  overflow: hidden;
+  overscroll-behavior: none;
+  -webkit-overflow-scrolling: auto;
+}
+
+body {
+  position: fixed;
+  inset: 0;
+  touch-action: none;
+  -webkit-text-size-adjust: 100%;
+}
+
+#root {
+  height: 100%;
+  width: 100%;
+  overflow: hidden;
+}
+
+/* The ArcGIS map needs touch gestures for pan/zoom within its own container. */
+.esri-view,
+.esri-view-surface {
+  touch-action: none;
+}

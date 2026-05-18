@@ -2,6 +2,36 @@
 
 ---
 
+## 2026-05-18 — Mobile Layout Pass (feature/mobile)
+
+**Branch**: `feature/mobile`. Pushed to origin. Goal: make the dashboard usable on phones — lifeline strip was getting clipped, and finger drags were panning the document.
+
+**Page-level anchoring** (new `src/index.css`, imported in `main.tsx`):
+- `html, body` get `overflow: hidden`, `overscroll-behavior: none`, 100% size.
+- `body` gets `position: fixed; inset: 0; touch-action: none` so finger drags do not pan/bounce the document.
+- `#root` is 100%/100% with `overflow: hidden`.
+- Carve-out: `.esri-view, .esri-view-surface { touch-action: none }` lets ArcGIS handle its own touch gestures (pan/zoom inside the map). Necessary because the global lock would otherwise kill map interaction.
+- `index.html` viewport meta tightened to `maximum-scale=1.0, user-scalable=no, viewport-fit=cover` to suppress pinch-zoom (which would otherwise let the document shift).
+
+**Shell sizing** (`App.module.css`): `.shell` height is `100vh` then `100dvh` (dynamic viewport — handles iOS Safari bottom bar collapsing). Also added `touch-action: none; overscroll-behavior: none` defensively.
+
+**Top bar at ≤760px**: drops `.topBarLeft` (title) and `.lastUpdated` to free room for EventSelector + sign-out. Bar shrinks from 48px → 44px.
+
+**LifelineStrip mobile distribution** (`LifelineStrip.module.css`):
+- Tiles already `flex: 1 1 0` — the issue was the fixed 52px image plus padding/gaps overflowing on narrow widths.
+- ≤760px: `gap: 2px`, padding `4px 4px 6px`, tile padding `2px 0`, border `1px`, image goes responsive (`width: 100%; max-width: 44px; max-height: 44px`). Label wraps with `overflow-wrap: anywhere` at 0.55rem. All 8 tiles fit evenly.
+- ≤420px: image cap drops to 38px, labels `display: none`. Just the graphics across the very narrowest phones.
+
+**LifelineDrawer mobile** (`LifelineDrawer.module.css`):
+- ≤760px: drawer goes full-width (no left border).
+- `.body` already had `overflow-y: auto` (internal scroll preserved per requirement). Added `overscroll-behavior: contain` + `touch-action: pan-y` so scrolling stays inside the drawer and never escapes to the locked document.
+
+**MapToolbar legend panel** (`MapToolbar.module.css`): mirrored the drawer — full width on mobile, `overscroll-behavior: contain` + `touch-action: pan-y` on `.legendBody`.
+
+**Why these specific guards** (in case the lock seems redundant): `touch-action: none` alone prevents the OS from interpreting the gesture as a pan, but iOS still rubber-bands the body unless `position: fixed` + `overscroll-behavior: none` are also set. The three together are the reliable combo. The internal scroll containers reverse it with `touch-action: pan-y; overscroll-behavior: contain`.
+
+---
+
 ## 2026-05-18 — GitHub + Amplify Hosting Live
 
 **GitHub**: `https://github.com/CJCarsley/community-lifelines` (canonical casing — the lowercase `cjcarsley/...` form 301-redirects). Initial commit `2874664`, hosting commit `29997ef`. Default branch `main`. Local `~/.gitconfig` (at `U:\.gitconfig`) has `user.name=CJCarsley`, `user.email=CJCarsley@dotcomm.org` — same identity used on warming-cooling-centers.
