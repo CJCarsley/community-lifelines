@@ -79,6 +79,7 @@
   right: 0;
   bottom: 0;
   width: 280px;
+  max-width: 100%;
   z-index: 20;
   background: #fff;
   border-left: 1px solid rgba(0, 0, 0, 0.12);
@@ -87,6 +88,13 @@
   flex-direction: column;
   overflow: hidden;
   animation: legendSlideIn 200ms ease-out;
+}
+
+@media (max-width: 760px) {
+  .legendPanel {
+    width: 100%;
+    border-left: none;
+  }
 }
 
 @keyframes legendSlideIn {
@@ -142,6 +150,9 @@
 .legendBody {
   flex: 1;
   overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
+  touch-action: pan-y;
   padding: 8px 0;
 }
 

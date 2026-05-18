@@ -67,10 +67,21 @@
 .body {
   flex: 1;
   overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
+  touch-action: pan-y;
   padding: 14px 16px;
   display: flex;
   flex-direction: column;
   gap: 18px;
+}
+
+/* ─── Mobile: full-width drawer covering the map ─── */
+@media (max-width: 760px) {
+  .drawer {
+    width: 100%;
+    border-left: none;
+  }
 }
 
 /* ─── Section ─── */
