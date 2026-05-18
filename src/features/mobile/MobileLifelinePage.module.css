@@ -1,0 +1,309 @@
+/* Full-viewport detail page: header (fixed) / map (fixed) / content (scroll) */
+.page {
+  height: 100%;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  background: #fff;
+}
+
+/* ─── Header ─── */
+.header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 12px 10px;
+  border-bottom: 1px solid #eceef2;
+  flex-shrink: 0;
+}
+
+.backBtn {
+  flex-shrink: 0;
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #f5f6f9;
+  color: #1b2a4a;
+  border: 1px solid #dde0e8;
+  border-radius: 8px;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  transition: background 120ms;
+}
+
+.backBtn:active {
+  background: #e7ebf3;
+}
+
+.backBtn:focus-visible {
+  outline: 2px solid #90caf9;
+  outline-offset: 2px;
+}
+
+.headerText {
+  flex: 1;
+  min-width: 0;
+}
+
+.heading {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 700;
+  color: #1b2a4a;
+  line-height: 1.2;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.headerMeta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 3px;
+  flex-wrap: wrap;
+}
+
+.statusBadge {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 10px;
+  font-size: 0.65rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: #fff;
+}
+
+.lastUpdated {
+  font-size: 0.7rem;
+  color: #888;
+}
+
+/* ─── Map slot ─── */
+.mapSlot {
+  position: relative;
+  flex-shrink: 0;
+  /* ~38% of remaining height on portrait; capped for tall phones */
+  height: 38dvh;
+  min-height: 200px;
+  max-height: 320px;
+  border-bottom: 1px solid #eceef2;
+  overflow: hidden;
+}
+
+/* Landscape phones: smaller map so list has room */
+@media (orientation: landscape) and (max-height: 500px) {
+  .mapSlot {
+    height: 45%;
+    min-height: 0;
+    max-height: none;
+  }
+}
+
+/* ─── Scrollable content ─── */
+.content {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
+  touch-action: pan-y;
+  padding: 14px 14px 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  background: #fafbfc;
+}
+
+.section {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.sectionLabel {
+  font-size: 0.68rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  color: #888;
+}
+
+/* ─── Notes ─── */
+.notesTextarea {
+  width: 100%;
+  padding: 8px 10px;
+  border: 1px solid #dde0e8;
+  border-radius: 6px;
+  font-size: 0.875rem;
+  font-family: inherit;
+  color: #222;
+  background: #fff;
+  resize: vertical;
+  box-sizing: border-box;
+  line-height: 1.45;
+  transition: border-color 120ms;
+}
+
+.notesTextarea:focus {
+  outline: 2px solid #90caf9;
+  outline-offset: 1px;
+  border-color: #90caf9;
+}
+
+.notesReadonly {
+  padding: 8px 10px;
+  font-size: 0.875rem;
+  color: #555;
+  background: #fff;
+  border: 1px solid #eee;
+  border-radius: 6px;
+  line-height: 1.45;
+  white-space: pre-wrap;
+  min-height: 44px;
+}
+
+/* ─── Segmented status control ─── */
+.segmented {
+  display: flex;
+  border: 1px solid #dde0e8;
+  border-radius: 6px;
+  overflow: hidden;
+}
+
+.segmentedOption {
+  flex: 1;
+  position: relative;
+  min-width: 0;
+}
+
+.segmentedOption + .segmentedOption {
+  border-left: 1px solid #dde0e8;
+}
+
+.srOnly {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.segmentedLabel {
+  display: block;
+  padding: 8px 2px;
+  text-align: center;
+  font-size: 0.62rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  cursor: pointer;
+  color: #888;
+  background: #fff;
+  user-select: none;
+  line-height: 1.25;
+  transition: background 120ms, color 120ms;
+}
+
+.segmentedLabelSelected {
+  color: #fff;
+}
+
+.segmentedOption:focus-within .segmentedLabel {
+  outline: 2px solid #90caf9;
+  outline-offset: -2px;
+  position: relative;
+  z-index: 1;
+}
+
+/* ─── Incident list ─── */
+.incidentList {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.emptyHint {
+  font-size: 0.85rem;
+  color: #aaa;
+  font-style: italic;
+  margin: 4px 0 0;
+}
+
+.incidentCard {
+  width: 100%;
+  text-align: left;
+  padding: 10px 11px;
+  border: 1px solid #eceef2;
+  border-radius: 8px;
+  background: #fff;
+  font-family: inherit;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  transition: background 120ms, border-color 120ms;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.incidentCard:active {
+  background: #eef3fc;
+}
+
+.incidentCardFocused {
+  border-color: #1b2a4a;
+  background: #eef3fc;
+}
+
+.incidentCard:focus-visible {
+  outline: 2px solid #90caf9;
+  outline-offset: 2px;
+}
+
+.incidentTitle {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: #1b2a4a;
+  margin: 0;
+  line-height: 1.35;
+}
+
+.incidentMeta {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.severityChip {
+  display: inline-block;
+  padding: 1px 7px;
+  border-radius: 3px;
+  font-size: 0.65rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: #fff;
+}
+
+.incidentTs {
+  font-size: 0.72rem;
+  color: #999;
+}
+
+.incidentLocate {
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: #1565c0;
+  letter-spacing: 0.02em;
+}

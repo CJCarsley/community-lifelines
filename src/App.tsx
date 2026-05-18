@@ -5,6 +5,8 @@ import MapToolbar from '@features/map/MapToolbar';
 import LifelineDrawer from '@features/lifelines/LifelineDrawer';
 import LifelineStrip from '@features/lifelines/LifelineStrip';
 import EventSelector from '@components/EventSelector';
+import MobileShell from '@features/mobile/MobileShell';
+import { useIsMobile } from '@hooks/useIsMobile';
 import { useCrisisEventContext } from './contexts/CrisisEventContext';
 import { useTranslation } from 'react-i18next';
 import type { LifelineId, LifelineStatus } from '@types';
@@ -43,6 +45,8 @@ function deriveEventSeverity(statuses: LifelineStatus[]): EventSeverity {
 
 export default function App() {
   const { t } = useTranslation();
+  const isMobile = useIsMobile();
+
   const [activeView, setActiveView] = useState<ActiveView>('map');
   const [incidentsVisible, setIncidentsVisible] = useState(true);
 
@@ -55,7 +59,7 @@ export default function App() {
     );
   }, [activeEvent]);
 
-  // Per-lifeline tile refs — used to return focus when drawer closes
+  // Per-lifeline tile refs — used to return focus when drawer closes (desktop)
   const lifelineButtonRefs = useMemo(
     () =>
       Object.fromEntries(
@@ -75,7 +79,7 @@ export default function App() {
   }, [activeView, lifelineButtonRefs]);
 
   return (
-    <div className={styles.shell}>
+    <div className={isMobile ? styles.mobileShell : styles.shell}>
       {/* ── Top bar ── */}
       <header className={styles.topBar}>
         <span className={styles.topBarLeft}>{t('app.title')}</span>
@@ -102,45 +106,52 @@ export default function App() {
         </div>
       </header>
 
-      {/* ── Lifeline graphic strip ── */}
-      <LifelineStrip
-        className={styles.stripRow}
-        lifelines={activeEvent?.lifelines ?? null}
-        activeView={activeView}
-        onSelect={handleSelectLifeline}
-        buttonRefs={lifelineButtonRefs}
-      />
-
-      {/* ── Content area ── */}
-      <main className={styles.content} role="tabpanel">
-        <MapView>
-          {activeEvent && (
-            <IncidentsLayer
-              incidents={activeEvent.incidents}
-              activeView={activeView}
-              lifelines={activeEvent.lifelines}
-              visible={incidentsVisible}
-            />
-          )}
-          <MapToolbar
-            incidentsVisible={incidentsVisible}
-            onToggleIncidents={() => setIncidentsVisible((v) => !v)}
+      {isMobile ? (
+        /* ── Mobile: home grid → lifeline detail page ── */
+        <MobileShell />
+      ) : (
+        <>
+          {/* ── Lifeline graphic strip ── */}
+          <LifelineStrip
+            className={styles.stripRow}
+            lifelines={activeEvent?.lifelines ?? null}
+            activeView={activeView}
+            onSelect={handleSelectLifeline}
+            buttonRefs={lifelineButtonRefs}
           />
-        </MapView>
 
-        {activeView !== 'map' && activeEvent && (
-          <LifelineDrawer
-            key={activeView}
-            lifelineId={activeView as LifelineId}
-            lifeline={activeEvent.lifelines[activeView as LifelineId]}
-            incidents={activeEvent.incidents.filter((inc) =>
-              inc.affectedLifelines.includes(activeView as LifelineId)
+          {/* ── Content area ── */}
+          <main className={styles.content} role="tabpanel">
+            <MapView>
+              {activeEvent && (
+                <IncidentsLayer
+                  incidents={activeEvent.incidents}
+                  activeView={activeView}
+                  lifelines={activeEvent.lifelines}
+                  visible={incidentsVisible}
+                />
+              )}
+              <MapToolbar
+                incidentsVisible={incidentsVisible}
+                onToggleIncidents={() => setIncidentsVisible((v) => !v)}
+              />
+            </MapView>
+
+            {activeView !== 'map' && activeEvent && (
+              <LifelineDrawer
+                key={activeView}
+                lifelineId={activeView as LifelineId}
+                lifeline={activeEvent.lifelines[activeView as LifelineId]}
+                incidents={activeEvent.incidents.filter((inc) =>
+                  inc.affectedLifelines.includes(activeView as LifelineId)
+                )}
+                eventId={activeEvent.id}
+                onClose={handleDrawerClose}
+              />
             )}
-            eventId={activeEvent.id}
-            onClose={handleDrawerClose}
-          />
-        )}
-      </main>
+          </main>
+        </>
+      )}
     </div>
   );
 }
