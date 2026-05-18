@@ -14,7 +14,8 @@
     "delete": "Delete",
     "edit": "Edit",
     "add": "Add",
-    "search": "Search"
+    "search": "Search",
+    "back": "Back"
   },
   "nav": {
     "map": "Map",
@@ -64,7 +65,8 @@
       "incidents":          "Affected Incidents",
       "noIncidents":        "No incidents affecting this lifeline.",
       "statusControl":      "Change Status",
-      "locateOnMap":        "Locate on map"
+      "locateOnMap":        "Locate on map",
+      "showAll":            "Show all incidents"
     }
   },
   "map": {

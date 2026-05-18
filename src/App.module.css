@@ -1,4 +1,4 @@
-/* ─── Shell grid ─── */
+/* ─── Shell grid (desktop) ─── */
 .shell {
   display: grid;
   grid-template-rows: 48px auto 1fr;
@@ -11,20 +11,27 @@
   overscroll-behavior: none;
 }
 
-@media (max-width: 760px) {
-  .shell {
-    grid-template-rows: 44px auto 1fr;
-  }
-  .topBar {
-    padding: 0 8px;
-    gap: 6px;
-  }
-  .topBarLeft {
-    display: none;
-  }
-  .lastUpdated {
-    display: none;
-  }
+/* ─── Shell grid (mobile) — no lifeline strip row ─── */
+.mobileShell {
+  display: grid;
+  grid-template-rows: 44px 1fr;
+  grid-template-columns: 1fr;
+  height: 100vh;
+  height: 100dvh;
+  overflow: hidden;
+  font-family: system-ui, -apple-system, 'Segoe UI', sans-serif;
+  touch-action: none;
+  overscroll-behavior: none;
+}
+
+.mobileShell .topBar {
+  padding: 0 8px;
+  gap: 6px;
+}
+
+.mobileShell .topBarLeft,
+.mobileShell .lastUpdated {
+  display: none;
 }
 
 /* ─── Top bar ─── */
