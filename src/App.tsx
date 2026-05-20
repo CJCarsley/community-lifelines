@@ -4,15 +4,18 @@ import IncidentsLayer from '@features/incidents/IncidentsLayer';
 import MapToolbar from '@features/map/MapToolbar';
 import LifelineDrawer from '@features/lifelines/LifelineDrawer';
 import LifelineStrip from '@features/lifelines/LifelineStrip';
+import AdminPage from '@features/admin/AdminPage';
 import EventSelector from '@components/EventSelector';
 import MobileShell from '@features/mobile/MobileShell';
 import { useIsMobile } from '@hooks/useIsMobile';
+import { useAuth } from '@hooks/useAuth';
+import { useMapConfig } from '@contexts/MapConfigContext';
 import { useCrisisEventContext } from './contexts/CrisisEventContext';
 import { useTranslation } from 'react-i18next';
 import type { LifelineId, LifelineStatus } from '@types';
 import styles from './App.module.css';
 
-type ActiveView = 'map' | LifelineId;
+type ActiveView = 'map' | 'admin' | LifelineId;
 
 const LIFELINE_IDS: LifelineId[] = [
   'safety-security',
@@ -46,6 +49,10 @@ function deriveEventSeverity(statuses: LifelineStatus[]): EventSeverity {
 export default function App() {
   const { t } = useTranslation();
   const isMobile = useIsMobile();
+  const { user } = useAuth();
+  const { mapVersion } = useMapConfig();
+
+  const isAdmin = user !== null && user.roles.includes('Admin');
 
   const [activeView, setActiveView] = useState<ActiveView>('map');
   const [incidentsVisible, setIncidentsVisible] = useState(true);
@@ -78,6 +85,16 @@ export default function App() {
     requestAnimationFrame(() => lifelineButtonRefs[id]?.current?.focus());
   }, [activeView, lifelineButtonRefs]);
 
+  const handleToggleAdmin = useCallback(() => {
+    setActiveView((prev) => (prev === 'admin' ? 'map' : 'admin'));
+  }, []);
+
+  const showAdminNav = isAdmin && !isMobile;
+  const isAdminActive = activeView === 'admin';
+  const mapActiveView: 'map' | LifelineId =
+    activeView === 'admin' ? 'map' : activeView;
+  const isLifelineActive = mapActiveView !== 'map';
+
   return (
     <div className={isMobile ? styles.mobileShell : styles.shell}>
       {/* ── Top bar ── */}
@@ -102,6 +119,16 @@ export default function App() {
               {t('topBar.lastUpdated', { time: activeEvent.startDate })}
             </span>
           )}
+          {showAdminNav && (
+            <button
+              type="button"
+              className={`${styles.adminBtn}${isAdminActive ? ` ${styles.adminBtnActive}` : ''}`}
+              aria-pressed={isAdminActive}
+              onClick={handleToggleAdmin}
+            >
+              {t('admin.navButton')}
+            </button>
+          )}
           <button className={styles.signOutBtn}>{t('auth.signOut')}</button>
         </div>
       </header>
@@ -115,39 +142,45 @@ export default function App() {
           <LifelineStrip
             className={styles.stripRow}
             lifelines={activeEvent?.lifelines ?? null}
-            activeView={activeView}
+            activeView={mapActiveView}
             onSelect={handleSelectLifeline}
             buttonRefs={lifelineButtonRefs}
           />
 
           {/* ── Content area ── */}
           <main className={styles.content} role="tabpanel">
-            <MapView>
-              {activeEvent && (
-                <IncidentsLayer
-                  incidents={activeEvent.incidents}
-                  activeView={activeView}
-                  lifelines={activeEvent.lifelines}
-                  visible={incidentsVisible}
-                />
-              )}
-              <MapToolbar
-                incidentsVisible={incidentsVisible}
-                onToggleIncidents={() => setIncidentsVisible((v) => !v)}
-              />
-            </MapView>
+            {isAdminActive ? (
+              <AdminPage />
+            ) : (
+              <>
+                <MapView key={mapVersion}>
+                  {activeEvent && (
+                    <IncidentsLayer
+                      incidents={activeEvent.incidents}
+                      activeView={mapActiveView}
+                      lifelines={activeEvent.lifelines}
+                      visible={incidentsVisible}
+                    />
+                  )}
+                  <MapToolbar
+                    incidentsVisible={incidentsVisible}
+                    onToggleIncidents={() => setIncidentsVisible((v) => !v)}
+                  />
+                </MapView>
 
-            {activeView !== 'map' && activeEvent && (
-              <LifelineDrawer
-                key={activeView}
-                lifelineId={activeView as LifelineId}
-                lifeline={activeEvent.lifelines[activeView as LifelineId]}
-                incidents={activeEvent.incidents.filter((inc) =>
-                  inc.affectedLifelines.includes(activeView as LifelineId)
+                {isLifelineActive && mapActiveView !== 'map' && activeEvent && (
+                  <LifelineDrawer
+                    key={mapActiveView}
+                    lifelineId={mapActiveView}
+                    lifeline={activeEvent.lifelines[mapActiveView]}
+                    incidents={activeEvent.incidents.filter((inc) =>
+                      inc.affectedLifelines.includes(mapActiveView)
+                    )}
+                    eventId={activeEvent.id}
+                    onClose={handleDrawerClose}
+                  />
                 )}
-                eventId={activeEvent.id}
-                onClose={handleDrawerClose}
-              />
+              </>
             )}
           </main>
         </>

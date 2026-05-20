@@ -3,6 +3,7 @@ import React from 'react';
 import ReactDOM from 'react-dom/client';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { CrisisEventProvider } from './contexts/CrisisEventContext';
+import { MapConfigProvider } from './contexts/MapConfigContext';
 import '@arcgis/core/assets/esri/themes/light/main.css';
 import './index.css';
 import './i18n';
@@ -22,11 +23,13 @@ if (!rootElement) throw new Error('Root element not found');
 ReactDOM.createRoot(rootElement).render(
   <StrictMode>
     <QueryClientProvider client={queryClient}>
-      <CrisisEventProvider>
-        <Suspense fallback={null}>
-          <App />
-        </Suspense>
-      </CrisisEventProvider>
+      <MapConfigProvider>
+        <CrisisEventProvider>
+          <Suspense fallback={null}>
+            <App />
+          </Suspense>
+        </CrisisEventProvider>
+      </MapConfigProvider>
     </QueryClientProvider>
   </StrictMode>,
 );

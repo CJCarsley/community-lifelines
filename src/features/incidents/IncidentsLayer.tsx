@@ -1,9 +1,8 @@
 import { useEffect, useRef } from 'react';
 import { useMapView } from '@features/map/useMapView';
+import { useMapConfig } from '@contexts/MapConfigContext';
 import type FeatureLayerType from '@arcgis/core/layers/FeatureLayer';
 import type { Incident, Lifeline, LifelineId } from '@types';
-
-const FEATURE_SERVICE_URL = 'PLACEHOLDER_URL';
 
 type ActiveView = 'map' | LifelineId;
 
@@ -20,6 +19,7 @@ function buildDefinitionExpression(activeView: ActiveView): string {
 
 export default function IncidentsLayer({ activeView, visible = true }: IncidentsLayerProps) {
   const viewRef = useMapView();
+  const { featureServiceUrl } = useMapConfig();
   const layerRef = useRef<FeatureLayerType | null>(null);
 
   useEffect(() => {
@@ -35,6 +35,7 @@ export default function IncidentsLayer({ activeView, visible = true }: Incidents
   useEffect(() => {
     const view = viewRef.current;
     if (!view?.map) return;
+    if (!featureServiceUrl) return;
 
     let destroyed = false;
 
@@ -42,7 +43,7 @@ export default function IncidentsLayer({ activeView, visible = true }: Incidents
       if (destroyed || !view.map) return;
 
       const layer = new FeatureLayer({
-        url: FEATURE_SERVICE_URL,
+        url: featureServiceUrl,
         definitionExpression: buildDefinitionExpression(activeView),
         visible,
       });
