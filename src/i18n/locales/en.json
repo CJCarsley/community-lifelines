@@ -122,5 +122,18 @@
     "signOut": "Sign Out",
     "email": "Email",
     "password": "Password"
+  },
+  "admin": {
+    "navButton": "Admin",
+    "heading": "Admin Settings",
+    "subheading": "Configure the AGOL Web Map and Feature Service used by the dashboard. Saving reloads the map immediately.",
+    "webMapIdLabel": "Web Map ID",
+    "webMapIdPlaceholder": "AGOL portal item ID",
+    "webMapIdError": "Web Map ID is required.",
+    "featureUrlLabel": "Feature Service URL",
+    "featureUrlPlaceholder": "https://services.arcgis.com/...",
+    "featureUrlError": "Feature Service URL is required.",
+    "featureUrlHttpsError": "Feature Service URL must start with https://.",
+    "saved": "Saved"
   }
 }

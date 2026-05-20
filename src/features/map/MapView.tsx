@@ -1,19 +1,20 @@
 import { type ReactNode, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import type MapViewType from '@arcgis/core/views/MapView';
+import { useMapConfig } from '@contexts/MapConfigContext';
 import { MapViewContext } from './useMapView';
 import styles from './MapView.module.css';
 
-const WEB_MAP_ID = 'PLACEHOLDER_ID';
-
 export default function MapView({ children }: { children?: ReactNode }) {
   const { t } = useTranslation();
+  const { webMapId } = useMapConfig();
   const containerRef = useRef<HTMLDivElement>(null);
   const viewRef = useRef<MapViewType | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     if (!containerRef.current) return;
+    if (!webMapId) return;
 
     let cancelled = false;
 
@@ -28,7 +29,7 @@ export default function MapView({ children }: { children?: ReactNode }) {
     ]) => {
       if (cancelled || !containerRef.current) return;
 
-      const map = new WebMap({ portalItem: { id: WEB_MAP_ID } });
+      const map = new WebMap({ portalItem: { id: webMapId } });
 
       const view = new ArcGISMapView({
         container: containerRef.current,
