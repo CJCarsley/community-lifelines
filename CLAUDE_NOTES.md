@@ -2,6 +2,38 @@
 
 ---
 
+## 2026-05-20 — AGOL WebMap + Admin Settings (feature/webmap, feature/admin-page)
+
+**Two stacked branches**, both pushed: `feature/webmap` (commit `2ea9a15`) introduces the AGOL plumbing; `feature/admin-page` (commit `17f3d17`, branched from `feature/webmap`) makes the IDs editable at runtime.
+
+**feature/webmap — what landed**:
+- `MapView.tsx`: `new Map({ basemap: 'gray-vector' })` → `new WebMap({ portalItem: { id: WEB_MAP_ID } })`. Lazy-load list swapped `@arcgis/core/Map` → `@arcgis/core/WebMap`. Skeleton/ScaleBar/useMapView pattern preserved.
+- `IncidentsLayer.tsx`: full rewrite — dropped all GraphicsLayer / Graphic / Point / SimpleMarkerSymbol / SimpleFillSymbol / SimpleLineSymbol / PopupTemplate / geometryEngine imports and the SEVERITY_MARKER_STYLES / parseHex / buildPopupContent helpers. Now mounts a FeatureLayer at `FEATURE_SERVICE_URL`, filters via `definitionExpression` (`lifeline_id = '<id>'` when a specific lifeline is active, else `1=1`). Visibility-only toggle still uses the separate-effect pattern (no recreation).
+- **Props back-compat trick**: kept `incidents?` and `lifelines?` on `IncidentsLayerProps` even though they're unused — App.tsx and MobileLifelinePage.tsx still pass them and the spec said don't touch those call sites. Worth narrowing later when the call sites are revisited.
+- The marker-shape SVGs in `MapToolbar.tsx` legend are now stale (FeatureLayer renderers come from AGOL, not our code). Comment at MapToolbar.tsx:75 still references `SimpleMarkerSymbol styles` — left untouched; will need revisiting if/when we own renderers again.
+- `IncidentsLayer` is now a misnomer (it's a generic lifeline FeatureLayer mounter). Rename deferred to avoid churning the call sites.
+
+**feature/admin-page — what landed**:
+- New `src/contexts/MapConfigContext.tsx` — provider holds `webMapId`, `featureServiceUrl`, `mapVersion`, `setMapConfig(id, url)`. Setter updates both values **and** bumps `mapVersion`. Initial values are the `PLACEHOLDER_ID` / `PLACEHOLDER_URL` strings (moved here from MapView/IncidentsLayer). Phase B will replace the provider body with an AppSync fetch — interface stays the same.
+- `MapView.tsx` and `IncidentsLayer.tsx` no longer hold their respective constants. Each reads from `useMapConfig()` and **gates construction on a non-empty value** so a future fetch-then-set flow doesn't crash on empty initial state.
+- `App.tsx` reads `mapVersion` and uses it as `MapView`'s `key` — `setMapConfig` → bump → MapView fully remounts (its child IncidentsLayer too) with the new config. **No `webMapId` in MapView's effect deps** — single-mount semantics by design; key-bump is the only remount trigger.
+- `AdminPage.tsx` (new) — admin-only via `user.roles.includes('Admin')`, hard-returns `null` for non-admins as a defense even though the nav button is also gated. Form: two text inputs pre-filled from `useMapConfig()`, validates non-empty + `https://` prefix on the URL, Save is `useButton` from `@react-aria/button` with `isDisabled` while unchanged or invalid. Save calls `setMapConfig` and shows a transient "Saved" hint that clears on next keystroke. Inline errors only appear after the user types into a field (no errors on initial render); `aria-invalid` + `aria-describedby` wired for SR.
+- `AdminPage.module.css` — dark navy (`#162238` page, `#1b2a4a` form card), 44px min-height on inputs and Save button, `:focus-visible` rings matching `LifelineDrawer`, mobile-stretch Save at ≤760px.
+- `App.tsx` — `ActiveView` widened to `'map' | 'admin' | LifelineId`. New top-bar "Admin" button (`adminBtn` + `adminBtnActive` styles in `App.module.css`) — visible only to admin role, **desktop only** (`!isMobile`); mobile admin deferred because MobileShell is out-of-scope for this branch. Active-state toggle pattern matches the lifeline tile toggle. `mapActiveView: 'map' | LifelineId` local narrows the type for LifelineStrip / IncidentsLayer / LifelineDrawer prop boundaries (TS can't narrow through an `isAdminActive` boolean alone).
+- When AdminPage is active, the entire MapView tree is unmounted — no map behind the form. LifelineDrawer is gated off as well.
+
+**Provider order in `main.tsx`** (outermost → inner): `StrictMode` → `QueryClientProvider` → `MapConfigProvider` → `CrisisEventProvider` → `Suspense` → `App`. MapConfig is above CrisisEvent because nothing in CrisisEvent reads map config, but the inverse isn't true.
+
+**i18n additions** (`en.json`): new `admin.*` namespace — `navButton`, `heading`, `subheading`, `webMapIdLabel/Placeholder/Error`, `featureUrlLabel/Placeholder/Error/HttpsError`, `saved`. No new keys outside that namespace.
+
+**SQL-injection note**: `definitionExpression = `lifeline_id = '${activeView}'`` uses string interpolation. `activeView` is narrowed to `LifelineId` (closed union of safe slugs) before this is built, so it's not exploitable today — but worth knowing before this is ever wired to user-controlled state.
+
+**What's NOT verified**: no dev-server smoke test in either branch. Typecheck passes (`tsc --noEmit` exit 0). Browser verification of WebMap render, FeatureLayer filtering, and Save → remount flow still pending — needs a real AGOL item ID and service URL to actually load anything.
+
+**Stacking caveat**: `feature/admin-page` is based on `feature/webmap`, not `main`. Merge `webmap` PR first; `admin-page` will then rebase cleanly. Rebasing `admin-page` directly onto `main` before `webmap` merges would conflict on `MapView.tsx` (basemap vs WebMap) and `IncidentsLayer.tsx` (GraphicsLayer vs FeatureLayer).
+
+---
+
 ## 2026-05-18 — Mobile Two-Screen Flow (feature/mobile-2)
 
 **Branch**: `feature/mobile-2`, branched off `feature/mobile` (keeps the document-anchoring lock from that pass). Pushed to origin. Commit `e5e9b1b`. Goal: replace the cramped horizontal lifeline strip on phones with a dedicated mobile flow — *home* (8 large tiles) → *detail* (small map + scrollable info).
