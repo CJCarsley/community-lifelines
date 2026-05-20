@@ -2,6 +2,53 @@
 
 ---
 
+## 2026-05-18 — Mobile Two-Screen Flow (feature/mobile-2)
+
+**Branch**: `feature/mobile-2`, branched off `feature/mobile` (keeps the document-anchoring lock from that pass). Pushed to origin. Commit `e5e9b1b`. Goal: replace the cramped horizontal lifeline strip on phones with a dedicated mobile flow — *home* (8 large tiles) → *detail* (small map + scrollable info).
+
+**Mobile detection** (`src/hooks/useIsMobile.ts`): single `matchMedia('(max-width: 760px)')` hook with `addEventListener('change')`. JS-side branching (vs pure CSS show/hide) because the desktop vs mobile component trees are different enough — the strip + drawer + full map vs. the home grid + small map — that conditionally rendering keeps unused trees out of the DOM and avoids double-mounting ArcGIS.
+
+**App.tsx routing**: `useIsMobile()` selects the shell class (`.shell` vs `.mobileShell`) and the body content. Desktop branch unchanged. Mobile branch replaces the strip + map area with `<MobileShell />`.
+
+**App.module.css**: added `.mobileShell` — `grid-template-rows: 44px 1fr` (no strip row), same `100dvh` / `touch-action: none` / `overscroll-behavior: none` anchoring as `.shell`. The mobile top bar drops `.topBarLeft` (title) and `.lastUpdated` via descendant selectors on `.mobileShell` so EventSelector + sign-out fit comfortably.
+
+**MobileShell** (`src/features/mobile/MobileShell.tsx`): tiny state machine. `activeLifeline: LifelineId | null` — null means home, non-null means detail. Renders `MobileHome` or `MobileLifelinePage`. No real router; this is a single-page in-place toggle. `key={activeLifeline}` on the detail page so per-lifeline state (notes draft, focused incident) is fresh on each switch.
+
+**MobileHome** (`src/features/mobile/MobileHome.tsx`): 2-col × 4-row CSS grid filling the viewport. Each tile = official lifeline graphic (status-tinted via the `STATUS_HALO` map, same convention as `LifelineStrip`) + label + status text. Tile flex column with `flex: 1 1 0` on the image — image scales fluidly to fill available tile height while staying contained. Portrait layout is 2×4; `@media (orientation: landscape) and (max-height: 500px)` flips to 4×2 for landscape phones so tiles stay roughly square. `@media (max-height: 600px)` hides the status sublabel on very short screens.
+
+**MobileLifelinePage** (`src/features/mobile/MobileLifelinePage.tsx`): three-row flex column.
+- Header (fixed): back-button (custom SVG chevron, `useButton`) + lifeline name + status badge + last-updated timestamp.
+- Map slot (fixed): `height: 38dvh`, `min-height: 200px`, `max-height: 320px`. Hosts a fresh `<MapView>` with `<IncidentsLayer activeView={lifelineId}>` and an internal `<ZoomToIncidents>` helper.
+- Content (scrollable): `overflow-y: auto` + `touch-action: pan-y` + `overscroll-behavior: contain` so scroll stays inside the page and never escapes the locked document. Houses the status segmented control (editors only), notes textarea with 800ms debounce → `useUpdateLifelineStatus`, and incident list.
+
+**Map reuse caveat**: each detail entry mounts a fresh ArcGIS `MapView` (because we unmount the page on back). The lazy-loaded ArcGIS modules are cached after first load, so subsequent entries are fast, but the view itself is re-instantiated. Acceptable for now — if it becomes a perceived lag, lift the `<MapView>` into `MobileShell` and hide vs unmount.
+
+**ZoomToIncidents** (helper inside `MobileLifelinePage.tsx`): replaces ArcGIS' Extent module with a small center+zoom heuristic. Computes the bounding span of incident coordinates and picks zoom from a 5-step ladder (`span > 12 → 5`, `> 5 → 6`, `> 1.5 → 7`, `> 0.3 → 9`, else 11). When a single incident is focused via the list, zooms to it at zoom 12. Single-incident lifelines: zoom 11. Empty: CONUS fallback (`[-98.5795, 39.8283]`, zoom 5). `lastTargetRef` debounces redundant `goTo` calls.
+
+**Incident list interaction**: each card is a `<button aria-pressed>` (not an anchor — there's no navigation). Tap toggles focus: tap to zoom map to that point, tap again (or tap a different card) to either widen back out or refocus. The "Locate on map" / "Show all incidents" label flips with focus state. All clearer than the drawer's per-card "Locate on map" button.
+
+**i18n keys added**: `common.back` = "Back", `lifeline.drawer.showAll` = "Show all incidents". `t()` calls in MobileLifelinePage use the second-arg fallback pattern (`t('common.back', 'Back')`) defensively in case keys are missing from a future locale.
+
+**Files**:
+```
+src/hooks/useIsMobile.ts                              (new)
+src/features/mobile/MobileShell.tsx                   (new)
+src/features/mobile/MobileShell.module.css            (new)
+src/features/mobile/MobileHome.tsx                    (new)
+src/features/mobile/MobileHome.module.css             (new)
+src/features/mobile/MobileLifelinePage.tsx            (new)
+src/features/mobile/MobileLifelinePage.module.css     (new)
+src/App.tsx                                           (modified — mobile branch)
+src/App.module.css                                    (modified — .mobileShell grid)
+src/i18n/locales/en.json                              (modified — back, showAll)
+```
+
+**What it replaces from feature/mobile**: the previous strategy crammed the strip to ~44px graphics + 0.55rem wrapped labels at ≤760px, and ≤420px hid labels entirely. That mobile-only strip CSS is now dead code on mobile (the strip is never rendered at ≤760px). Left in place because it's still correct if someone resizes a desktop window narrow; not worth removing.
+
+**Desktop**: completely untouched. `useIsMobile()` returns false above 760px and the original strip + map + drawer layout renders exactly as before.
+
+---
+
 ## 2026-05-18 — Mobile Layout Pass (feature/mobile)
 
 **Branch**: `feature/mobile`. Pushed to origin. Goal: make the dashboard usable on phones — lifeline strip was getting clipped, and finger drags were panning the document.

@@ -4,6 +4,8 @@ import type MapViewType from '@arcgis/core/views/MapView';
 import { MapViewContext } from './useMapView';
 import styles from './MapView.module.css';
 
+const WEB_MAP_ID = 'PLACEHOLDER_ID';
+
 export default function MapView({ children }: { children?: ReactNode }) {
   const { t } = useTranslation();
   const containerRef = useRef<HTMLDivElement>(null);
@@ -15,19 +17,18 @@ export default function MapView({ children }: { children?: ReactNode }) {
 
     let cancelled = false;
 
-    // Lazy-load all ArcGIS modules together — none are in the initial bundle
     void Promise.all([
-      import('@arcgis/core/Map'),
+      import('@arcgis/core/WebMap'),
       import('@arcgis/core/views/MapView'),
       import('@arcgis/core/widgets/ScaleBar'),
     ]).then(([
-      { default: ArcGISMap },
+      { default: WebMap },
       { default: ArcGISMapView },
       { default: ScaleBar },
     ]) => {
       if (cancelled || !containerRef.current) return;
 
-      const map = new ArcGISMap({ basemap: 'gray-vector' });
+      const map = new WebMap({ portalItem: { id: WEB_MAP_ID } });
 
       const view = new ArcGISMapView({
         container: containerRef.current,
