@@ -7,6 +7,7 @@ import LifelineStrip from '@features/lifelines/LifelineStrip';
 import AdminPage from '@features/admin/AdminPage';
 import EventSelector from '@components/EventSelector';
 import MobileShell from '@features/mobile/MobileShell';
+import { MapViewProvider } from '@features/map/useMapView';
 import { useIsMobile } from '@hooks/useIsMobile';
 import { useAuth } from '@hooks/useAuth';
 import { useMapConfig } from '@contexts/MapConfigContext';
@@ -152,13 +153,11 @@ export default function App() {
             {isAdminActive ? (
               <AdminPage />
             ) : (
-              <>
-                <MapView key={mapVersion}>
+              <MapViewProvider key={mapVersion}>
+                <MapView>
                   {activeEvent && (
                     <IncidentsLayer
-                      incidents={activeEvent.incidents}
                       activeView={mapActiveView}
-                      lifelines={activeEvent.lifelines}
                       visible={incidentsVisible}
                     />
                   )}
@@ -173,14 +172,11 @@ export default function App() {
                     key={mapActiveView}
                     lifelineId={mapActiveView}
                     lifeline={activeEvent.lifelines[mapActiveView]}
-                    incidents={activeEvent.incidents.filter((inc) =>
-                      inc.affectedLifelines.includes(mapActiveView)
-                    )}
                     eventId={activeEvent.id}
                     onClose={handleDrawerClose}
                   />
                 )}
-              </>
+              </MapViewProvider>
             )}
           </main>
         </>

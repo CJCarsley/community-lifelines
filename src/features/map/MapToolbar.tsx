@@ -257,7 +257,7 @@ export interface MapToolbarProps {
 
 export default function MapToolbar({ incidentsVisible, onToggleIncidents }: MapToolbarProps) {
   const { t } = useTranslation();
-  const viewRef = useMapView();
+  const { ref: viewRef } = useMapView();
   const [basemapIndex, setBasemapIndex] = useState(0);
   const [isLegendOpen, setIsLegendOpen] = useState(false);
 

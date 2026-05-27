@@ -18,12 +18,13 @@ function buildDefinitionExpression(activeView: ActiveView): string {
 }
 
 export default function IncidentsLayer({ activeView, visible = true }: IncidentsLayerProps) {
-  const viewRef = useMapView();
+  const { ref: viewRef, isReady } = useMapView();
   const { submissionsLayerId } = useMapConfig();
 
   useEffect(() => {
     const view = viewRef.current;
     if (!view?.map) return;
+    if (!isReady) return;
     if (!submissionsLayerId) return;
 
     const layer = view.map.allLayers.find(
@@ -33,7 +34,7 @@ export default function IncidentsLayer({ activeView, visible = true }: Incidents
 
     layer.definitionExpression = buildDefinitionExpression(activeView);
     layer.visible = visible;
-  }, [viewRef, submissionsLayerId, activeView, visible]);
+  }, [viewRef, isReady, submissionsLayerId, activeView, visible]);
 
   return null;
 }
