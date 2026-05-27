@@ -2,6 +2,41 @@
 
 ---
 
+## 2026-05-27 — Portal URL + Verify, WebMap-owned layer discovery
+
+**Pivot**: dashboard now points at an AGOL **portal + WebMap** (no separate FeatureService URL). The two pieces of lifeline data live *inside* the WebMap:
+- `lifeline_submissions` — operational FeatureLayer (incident points, filtered per active lifeline)
+- `lifeline_status` — a feature **table** (8 rows, one per lifeline ID). Discovered now; runtime read is a future change (will replace `mockData`).
+
+**Discovery strategy** (hybrid title-then-cache):
+- On first WebMap load, walk `webmap.allLayers` for `lifeline_submissions` and `webmap.tables` for `lifeline_status`, match by title, store their **layer IDs** in `MapConfigContext` via `setResolvedLayerIds`.
+- Subsequent runtime lookups (e.g., `IncidentsLayer`) use the cached IDs — title changes in AGOL don't break the app.
+- Cache is **in-memory only**. `webmap.load()` happens on every page mount anyway, so the title-walk discovery itself costs ~µs. Persisting (e.g., localStorage) would add stale-ID risk for no perceptible perf gain.
+- Re-discovery is triggered by `setMapConfig(portalUrl, webMapId)` — that setter clears resolved IDs (unless a `ResolvedLayerIds` is passed in alongside, as it is from a freshly-verified Save).
+
+**`MapConfigContext` shape** (replaces the `featureServiceUrl` model):
+```
+portalUrl: string        // default 'https://www.arcgis.com'
+webMapId: string         // default '' (was 'PLACEHOLDER_ID')
+submissionsLayerId: string | null
+statusTableId: string | null
+mapVersion: number
+setMapConfig(portalUrl, webMapId, resolved?: ResolvedLayerIds | null)
+setResolvedLayerIds(subId, tableId)
+```
+
+**`MapView.tsx`** — added `@arcgis/core/portal/Portal` to the lazy-load batch. Constructs `new Portal({ url: portalUrl })` and passes it as `portalItem.portal` so the portal scope is per-WebMap (no `esriConfig.portalUrl` mutation — avoids cross-instance interference during Verify). Discovery runs inside `view.when()` only when either resolved ID is `null` (preserves IDs carried in from Verify+Save). Both layer AND table must be found to call `setResolvedLayerIds` — partial state would be misleading.
+
+**`IncidentsLayer.tsx`** — no longer creates/owns a FeatureLayer. Looks up the WebMap-owned layer by `submissionsLayerId` (cast to `FeatureLayer`), then mutates its `definitionExpression` and `visible`. Single effect with deps `[viewRef, submissionsLayerId, activeView, visible]`. No cleanup — the layer's lifetime is the WebMap's, and the MapView remount via `mapVersion` key brings down the whole tree.
+
+**`AdminPage.tsx`** — Portal URL input (top, `type="url"`) + WebMap ID input (below). New **Verify** button (`useButton`, secondary outline style): loads a throwaway `WebMap` with the typed values, walks for both titles, surfaces specific errors (`verifyMapError` / `verifyLayerMissing` / `verifyTableMissing`). On success, the `ResolvedLayerIds` is stored in local state along with the verified `portalUrl`/`webMapId`; on Save, if the current draft still matches what was verified, those resolved IDs are passed into `setMapConfig` so the runtime skips re-discovery. Verify is **not** a gate on Save — if a user clicks Save without verifying first, the runtime will re-discover on next WebMap load.
+
+**Files**: `MapConfigContext.tsx`, `MapView.tsx`, `IncidentsLayer.tsx`, `AdminPage.tsx`, `AdminPage.module.css` (added `.verifyBtn` + `.verifySuccess` + `.verifyError`), `en.json` (renamed `admin.featureUrl*` → `admin.portalUrl*`, added `admin.verify*`).
+
+**Not verified**: no browser smoke test yet — needs a real AGOL portal + WebMap with the two named layers/tables to actually exercise Verify and the discovery path. `tsc --noEmit` exit 0.
+
+---
+
 ## 2026-05-20 — Amplify build fix on feature/admin-page
 
 **Symptom**: Amplify CI failed on `e9eaa16` with `src/App.tsx(171,38): error TS2367: This comparison appears to be unintentional because the types 'LifelineId' and '"map"' have no overlap.` Local `tsc --noEmit` had passed pre-push — version skew between local TS and Amplify's resolved TS bit us.

@@ -126,14 +126,20 @@
   "admin": {
     "navButton": "Admin",
     "heading": "Admin Settings",
-    "subheading": "Configure the AGOL Web Map and Feature Service used by the dashboard. Saving reloads the map immediately.",
+    "subheading": "Configure the AGOL Portal and Web Map used by the dashboard. The app will read its lifeline_submissions layer and lifeline_status table from the Web Map. Saving reloads the map immediately.",
+    "portalUrlLabel": "Portal URL",
+    "portalUrlPlaceholder": "https://www.arcgis.com",
+    "portalUrlError": "Portal URL is required.",
+    "portalUrlHttpsError": "Portal URL must start with https://.",
     "webMapIdLabel": "Web Map ID",
     "webMapIdPlaceholder": "AGOL portal item ID",
     "webMapIdError": "Web Map ID is required.",
-    "featureUrlLabel": "Feature Service URL",
-    "featureUrlPlaceholder": "https://services.arcgis.com/...",
-    "featureUrlError": "Feature Service URL is required.",
-    "featureUrlHttpsError": "Feature Service URL must start with https://.",
+    "verifyButton": "Verify",
+    "verifying": "Verifying…",
+    "verifySuccess": "Verified — found lifeline_submissions and lifeline_status.",
+    "verifyMapError": "Could not load Web Map. Check the Portal URL and Web Map ID.",
+    "verifyLayerMissing": "Web Map loaded, but no layer titled 'lifeline_submissions' was found.",
+    "verifyTableMissing": "Web Map loaded, but no table titled 'lifeline_status' was found.",
     "saved": "Saved"
   }
 }

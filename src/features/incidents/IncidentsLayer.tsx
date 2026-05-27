@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { useEffect } from 'react';
 import { useMapView } from '@features/map/useMapView';
 import { useMapConfig } from '@contexts/MapConfigContext';
 import type FeatureLayerType from '@arcgis/core/layers/FeatureLayer';
@@ -19,49 +19,21 @@ function buildDefinitionExpression(activeView: ActiveView): string {
 
 export default function IncidentsLayer({ activeView, visible = true }: IncidentsLayerProps) {
   const viewRef = useMapView();
-  const { featureServiceUrl } = useMapConfig();
-  const layerRef = useRef<FeatureLayerType | null>(null);
-
-  useEffect(() => {
-    if (layerRef.current) layerRef.current.visible = visible;
-  }, [visible]);
-
-  useEffect(() => {
-    if (layerRef.current) {
-      layerRef.current.definitionExpression = buildDefinitionExpression(activeView);
-    }
-  }, [activeView]);
+  const { submissionsLayerId } = useMapConfig();
 
   useEffect(() => {
     const view = viewRef.current;
     if (!view?.map) return;
-    if (!featureServiceUrl) return;
+    if (!submissionsLayerId) return;
 
-    let destroyed = false;
+    const layer = view.map.allLayers.find(
+      (l) => l.id === submissionsLayerId,
+    ) as FeatureLayerType | undefined;
+    if (!layer) return;
 
-    void import('@arcgis/core/layers/FeatureLayer').then(({ default: FeatureLayer }) => {
-      if (destroyed || !view.map) return;
-
-      const layer = new FeatureLayer({
-        url: featureServiceUrl,
-        definitionExpression: buildDefinitionExpression(activeView),
-        visible,
-      });
-
-      view.map.add(layer);
-      layerRef.current = layer;
-    });
-
-    return () => {
-      destroyed = true;
-      const current = layerRef.current;
-      if (current) {
-        view.map?.remove(current);
-        current.destroy();
-        layerRef.current = null;
-      }
-    };
-  }, [viewRef]);
+    layer.definitionExpression = buildDefinitionExpression(activeView);
+    layer.visible = visible;
+  }, [viewRef, submissionsLayerId, activeView, visible]);
 
   return null;
 }

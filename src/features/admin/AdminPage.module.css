@@ -155,6 +155,58 @@
   font-weight: 500;
 }
 
+.verifyBtn {
+  min-height: 44px;
+  min-width: 120px;
+  padding: 10px 20px;
+  border-radius: 6px;
+  border: 1px solid rgba(255, 255, 255, 0.35);
+  background: transparent;
+  color: #fff;
+  font-size: 0.9375rem;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+  transition: background 120ms, border-color 120ms, transform 80ms;
+}
+
+.verifyBtn:hover {
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(255, 255, 255, 0.55);
+}
+
+.verifyBtn:active {
+  transform: translateY(1px);
+}
+
+.verifyBtn:focus-visible {
+  outline: 2px solid #90caf9;
+  outline-offset: 2px;
+}
+
+.verifyBtnDisabled,
+.verifyBtnDisabled:hover {
+  background: transparent;
+  border-color: rgba(255, 255, 255, 0.12);
+  color: rgba(255, 255, 255, 0.35);
+  cursor: not-allowed;
+  transform: none;
+}
+
+.verifySuccess {
+  margin: 0;
+  font-size: 0.8125rem;
+  color: #8ed1a0;
+  line-height: 1.4;
+}
+
+.verifyError {
+  margin: 0;
+  font-size: 0.8125rem;
+  color: #f4a8a8;
+  line-height: 1.4;
+}
+
 @media (max-width: 760px) {
   .page {
     padding: 20px 16px;
@@ -169,7 +221,8 @@
     align-items: stretch;
   }
 
-  .saveBtn {
+  .saveBtn,
+  .verifyBtn {
     width: 100%;
   }
 }
