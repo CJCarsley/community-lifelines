@@ -5,9 +5,18 @@ import { useMapConfig } from '@contexts/MapConfigContext';
 import { MapViewContext } from './useMapView';
 import styles from './MapView.module.css';
 
+const SUBMISSIONS_LAYER_TITLE = 'lifeline_submissions';
+const STATUS_TABLE_TITLE = 'lifeline_status';
+
 export default function MapView({ children }: { children?: ReactNode }) {
   const { t } = useTranslation();
-  const { webMapId } = useMapConfig();
+  const {
+    portalUrl,
+    webMapId,
+    submissionsLayerId,
+    statusTableId,
+    setResolvedLayerIds,
+  } = useMapConfig();
   const containerRef = useRef<HTMLDivElement>(null);
   const viewRef = useRef<MapViewType | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -22,14 +31,17 @@ export default function MapView({ children }: { children?: ReactNode }) {
       import('@arcgis/core/WebMap'),
       import('@arcgis/core/views/MapView'),
       import('@arcgis/core/widgets/ScaleBar'),
+      import('@arcgis/core/portal/Portal'),
     ]).then(([
       { default: WebMap },
       { default: ArcGISMapView },
       { default: ScaleBar },
+      { default: Portal },
     ]) => {
       if (cancelled || !containerRef.current) return;
 
-      const map = new WebMap({ portalItem: { id: webMapId } });
+      const portal = new Portal({ url: portalUrl });
+      const map = new WebMap({ portalItem: { id: webMapId, portal } });
 
       const view = new ArcGISMapView({
         container: containerRef.current,
@@ -43,7 +55,17 @@ export default function MapView({ children }: { children?: ReactNode }) {
       viewRef.current = view;
 
       void view.when(() => {
-        if (!cancelled) setIsLoading(false);
+        if (cancelled) return;
+
+        if (!submissionsLayerId || !statusTableId) {
+          const subLayer = map.allLayers.find((l) => l.title === SUBMISSIONS_LAYER_TITLE);
+          const statusTable = map.tables.find((tbl) => tbl.title === STATUS_TABLE_TITLE);
+          if (subLayer && statusTable) {
+            setResolvedLayerIds(subLayer.id, statusTable.id);
+          }
+        }
+
+        setIsLoading(false);
       });
     });
 

@@ -1,27 +1,39 @@
 import { useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useButton } from '@react-aria/button';
-import { useMapConfig } from '@contexts/MapConfigContext';
+import { useMapConfig, type ResolvedLayerIds } from '@contexts/MapConfigContext';
 import { useAuth } from '@hooks/useAuth';
 import styles from './AdminPage.module.css';
 
+const PORTAL_URL_INPUT_ID = 'admin-portal-url';
 const WEB_MAP_ID_INPUT_ID = 'admin-webmap-id';
-const FEATURE_URL_INPUT_ID = 'admin-feature-url';
 
-interface SaveButtonProps {
+const SUBMISSIONS_LAYER_TITLE = 'lifeline_submissions';
+const STATUS_TABLE_TITLE = 'lifeline_status';
+
+type VerifyState =
+  | { kind: 'idle' }
+  | { kind: 'verifying' }
+  | { kind: 'success'; portalUrl: string; webMapId: string; resolved: ResolvedLayerIds }
+  | { kind: 'error'; messageKey: string };
+
+interface ActionButtonProps {
   onPress: () => void;
   isDisabled: boolean;
   label: string;
+  variant: 'primary' | 'secondary';
 }
 
-function SaveButton({ onPress, isDisabled, label }: SaveButtonProps) {
+function ActionButton({ onPress, isDisabled, label, variant }: ActionButtonProps) {
   const ref = useRef<HTMLButtonElement>(null);
   const { buttonProps } = useButton({ onPress, isDisabled }, ref);
+  const base = variant === 'primary' ? styles.saveBtn : styles.verifyBtn;
+  const disabledClass = variant === 'primary' ? styles.saveBtnDisabled : styles.verifyBtnDisabled;
   return (
     <button
       {...buttonProps}
       ref={ref}
-      className={`${styles.saveBtn}${isDisabled ? ` ${styles.saveBtnDisabled}` : ''}`}
+      className={`${base}${isDisabled ? ` ${disabledClass}` : ''}`}
     >
       {label}
     </button>
@@ -31,49 +43,89 @@ function SaveButton({ onPress, isDisabled, label }: SaveButtonProps) {
 export default function AdminPage() {
   const { t } = useTranslation();
   const { user } = useAuth();
-  const { webMapId, featureServiceUrl, setMapConfig } = useMapConfig();
+  const { portalUrl, webMapId, setMapConfig } = useMapConfig();
 
   const isAdmin = user !== null && user.roles.includes('Admin');
 
+  const [draftPortalUrl, setDraftPortalUrl] = useState(portalUrl);
   const [draftWebMapId, setDraftWebMapId] = useState(webMapId);
-  const [draftFeatureUrl, setDraftFeatureUrl] = useState(featureServiceUrl);
   const [savedAt, setSavedAt] = useState<number | null>(null);
+  const [verify, setVerify] = useState<VerifyState>({ kind: 'idle' });
 
+  const trimmedPortal = draftPortalUrl.trim();
   const trimmedId = draftWebMapId.trim();
-  const trimmedUrl = draftFeatureUrl.trim();
 
   const validation = useMemo(() => {
+    const portalNonEmpty = trimmedPortal.length > 0;
+    const portalIsHttps = trimmedPortal.startsWith('https://');
+    const portalValid = portalNonEmpty && portalIsHttps;
     const idValid = trimmedId.length > 0;
-    const urlNonEmpty = trimmedUrl.length > 0;
-    const urlIsHttps = trimmedUrl.startsWith('https://');
-    const urlValid = urlNonEmpty && urlIsHttps;
-    const changed = trimmedId !== webMapId || trimmedUrl !== featureServiceUrl;
+    const changed = trimmedPortal !== portalUrl || trimmedId !== webMapId;
     return {
+      portalNonEmpty,
+      portalIsHttps,
+      portalValid,
       idValid,
-      urlNonEmpty,
-      urlIsHttps,
-      urlValid,
       changed,
-      canSave: idValid && urlValid && changed,
+      canVerify: portalValid && idValid,
+      canSave: portalValid && idValid && changed,
     };
-  }, [trimmedId, trimmedUrl, webMapId, featureServiceUrl]);
+  }, [trimmedPortal, trimmedId, portalUrl, webMapId]);
+
+  const verifiedMatchesDraft =
+    verify.kind === 'success' &&
+    verify.portalUrl === trimmedPortal &&
+    verify.webMapId === trimmedId;
+
+  const handleVerify = async () => {
+    if (!validation.canVerify) return;
+    setVerify({ kind: 'verifying' });
+    try {
+      const [{ default: WebMap }, { default: Portal }] = await Promise.all([
+        import('@arcgis/core/WebMap'),
+        import('@arcgis/core/portal/Portal'),
+      ]);
+      const portal = new Portal({ url: trimmedPortal });
+      const map = new WebMap({ portalItem: { id: trimmedId, portal } });
+      await map.load();
+      const subLayer = map.allLayers.find((l) => l.title === SUBMISSIONS_LAYER_TITLE);
+      if (!subLayer) {
+        setVerify({ kind: 'error', messageKey: 'admin.verifyLayerMissing' });
+        return;
+      }
+      const statusTable = map.tables.find((tbl) => tbl.title === STATUS_TABLE_TITLE);
+      if (!statusTable) {
+        setVerify({ kind: 'error', messageKey: 'admin.verifyTableMissing' });
+        return;
+      }
+      setVerify({
+        kind: 'success',
+        portalUrl: trimmedPortal,
+        webMapId: trimmedId,
+        resolved: { submissionsLayerId: subLayer.id, statusTableId: statusTable.id },
+      });
+    } catch {
+      setVerify({ kind: 'error', messageKey: 'admin.verifyMapError' });
+    }
+  };
 
   const handleSave = () => {
     if (!validation.canSave) return;
-    setMapConfig(trimmedId, trimmedUrl);
+    const resolved = verifiedMatchesDraft ? verify.resolved : null;
+    setMapConfig(trimmedPortal, trimmedId, resolved);
     setSavedAt(Date.now());
   };
 
   if (!isAdmin) return null;
 
+  const portalError =
+    draftPortalUrl.length > 0 && !validation.portalValid
+      ? validation.portalNonEmpty && !validation.portalIsHttps
+        ? t('admin.portalUrlHttpsError')
+        : t('admin.portalUrlError')
+      : null;
   const idError =
     draftWebMapId.length > 0 && !validation.idValid ? t('admin.webMapIdError') : null;
-  const urlError =
-    draftFeatureUrl.length > 0 && !validation.urlValid
-      ? validation.urlNonEmpty && !validation.urlIsHttps
-        ? t('admin.featureUrlHttpsError')
-        : t('admin.featureUrlError')
-      : null;
 
   return (
     <section className={styles.page} aria-labelledby="admin-heading">
@@ -86,6 +138,34 @@ export default function AdminPage() {
 
       <div className={styles.form}>
         <div className={styles.field}>
+          <label htmlFor={PORTAL_URL_INPUT_ID} className={styles.label}>
+            {t('admin.portalUrlLabel')}
+          </label>
+          <input
+            id={PORTAL_URL_INPUT_ID}
+            type="url"
+            inputMode="url"
+            className={styles.input}
+            value={draftPortalUrl}
+            onChange={(e) => {
+              setDraftPortalUrl(e.target.value);
+              setSavedAt(null);
+              setVerify({ kind: 'idle' });
+            }}
+            placeholder={t('admin.portalUrlPlaceholder')}
+            autoComplete="off"
+            spellCheck={false}
+            aria-invalid={portalError !== null}
+            aria-describedby={portalError ? `${PORTAL_URL_INPUT_ID}-error` : undefined}
+          />
+          {portalError && (
+            <p id={`${PORTAL_URL_INPUT_ID}-error`} className={styles.error}>
+              {portalError}
+            </p>
+          )}
+        </div>
+
+        <div className={styles.field}>
           <label htmlFor={WEB_MAP_ID_INPUT_ID} className={styles.label}>
             {t('admin.webMapIdLabel')}
           </label>
@@ -97,6 +177,7 @@ export default function AdminPage() {
             onChange={(e) => {
               setDraftWebMapId(e.target.value);
               setSavedAt(null);
+              setVerify({ kind: 'idle' });
             }}
             placeholder={t('admin.webMapIdPlaceholder')}
             autoComplete="off"
@@ -111,35 +192,19 @@ export default function AdminPage() {
           )}
         </div>
 
-        <div className={styles.field}>
-          <label htmlFor={FEATURE_URL_INPUT_ID} className={styles.label}>
-            {t('admin.featureUrlLabel')}
-          </label>
-          <input
-            id={FEATURE_URL_INPUT_ID}
-            type="url"
-            inputMode="url"
-            className={styles.input}
-            value={draftFeatureUrl}
-            onChange={(e) => {
-              setDraftFeatureUrl(e.target.value);
-              setSavedAt(null);
-            }}
-            placeholder={t('admin.featureUrlPlaceholder')}
-            autoComplete="off"
-            spellCheck={false}
-            aria-invalid={urlError !== null}
-            aria-describedby={urlError ? `${FEATURE_URL_INPUT_ID}-error` : undefined}
-          />
-          {urlError && (
-            <p id={`${FEATURE_URL_INPUT_ID}-error`} className={styles.error}>
-              {urlError}
-            </p>
-          )}
-        </div>
-
         <div className={styles.actions}>
-          <SaveButton
+          <ActionButton
+            variant="secondary"
+            onPress={() => void handleVerify()}
+            isDisabled={!validation.canVerify || verify.kind === 'verifying'}
+            label={
+              verify.kind === 'verifying'
+                ? t('admin.verifying')
+                : t('admin.verifyButton')
+            }
+          />
+          <ActionButton
+            variant="primary"
             onPress={handleSave}
             isDisabled={!validation.canSave}
             label={t('common.save')}
@@ -150,6 +215,17 @@ export default function AdminPage() {
             </span>
           )}
         </div>
+
+        {verify.kind === 'success' && (
+          <p className={styles.verifySuccess} role="status">
+            {t('admin.verifySuccess')}
+          </p>
+        )}
+        {verify.kind === 'error' && (
+          <p className={styles.verifyError} role="status">
+            {t(verify.messageKey)}
+          </p>
+        )}
       </div>
     </section>
   );
