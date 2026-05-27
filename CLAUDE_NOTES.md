@@ -2,6 +2,18 @@
 
 ---
 
+## 2026-05-20 — Amplify build fix on feature/admin-page
+
+**Symptom**: Amplify CI failed on `e9eaa16` with `src/App.tsx(171,38): error TS2367: This comparison appears to be unintentional because the types 'LifelineId' and '"map"' have no overlap.` Local `tsc --noEmit` had passed pre-push — version skew between local TS and Amplify's resolved TS bit us.
+
+**Cause**: Line 171 read `isLifelineActive && mapActiveView !== 'map' && activeEvent`. TS 5.x narrows through **aliased const boolean conditions** — once `isLifelineActive` (= `mapActiveView !== 'map'`) is true, `mapActiveView` is already `LifelineId`, so the second compare is a no-overlap error.
+
+**Fix** (commit `bdb94f0`): drop the redundant compare → `isLifelineActive && activeEvent`. The `isLifelineActive` narrowing carries `mapActiveView` as `LifelineId` into the props below — no other changes needed.
+
+**Takeaway**: when guarding with an aliased boolean (`const isX = foo === 'a'`), don't re-state the underlying compare alongside it. Either use the boolean or the raw compare, not both.
+
+---
+
 ## 2026-05-20 — AGOL WebMap + Admin Settings (feature/webmap, feature/admin-page)
 
 **Two stacked branches**, both pushed: `feature/webmap` (commit `2ea9a15`) introduces the AGOL plumbing; `feature/admin-page` (commit `17f3d17`, branched from `feature/webmap`) makes the IDs editable at runtime.

@@ -168,7 +168,7 @@ export default function App() {
                   />
                 </MapView>
 
-                {isLifelineActive && mapActiveView !== 'map' && activeEvent && (
+                {isLifelineActive && activeEvent && (
                   <LifelineDrawer
                     key={mapActiveView}
                     lifelineId={mapActiveView}
