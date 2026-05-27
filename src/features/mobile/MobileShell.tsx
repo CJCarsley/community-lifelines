@@ -29,9 +29,6 @@ export default function MobileShell() {
           key={activeLifeline}
           lifelineId={activeLifeline}
           lifeline={activeEvent.lifelines[activeLifeline]}
-          incidents={activeEvent.incidents.filter((inc) =>
-            inc.affectedLifelines.includes(activeLifeline),
-          )}
           event={activeEvent}
           onBack={handleBack}
         />

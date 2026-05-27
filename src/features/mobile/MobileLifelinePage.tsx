@@ -5,12 +5,12 @@ import { useRadioGroup, useRadio } from '@react-aria/radio';
 import { useRadioGroupState } from '@react-stately/radio';
 import MapView from '@features/map/MapView';
 import IncidentsLayer from '@features/incidents/IncidentsLayer';
-import { useMapView } from '@features/map/useMapView';
+import { MapViewProvider, useMapView } from '@features/map/useMapView';
 import { useUpdateLifelineStatus } from '@hooks/useUpdateLifelineStatus';
+import { useLifelineSubmissions, type LifelineSubmission } from '@hooks/useLifelineSubmissions';
 import { useAuth, EDIT_ROLES } from '@hooks/useAuth';
 import type {
   CrisisEvent,
-  Incident,
   Lifeline,
   LifelineId,
   LifelineStatus,
@@ -32,41 +32,44 @@ const STATUS_ORDER: LifelineStatus[] = [
   'unknown', 'stable', 'minor', 'moderate', 'major', 'extreme',
 ];
 
-const SEVERITY_COLORS: Record<Incident['severity'], string> = {
+const KNOWN_SEVERITY_COLORS: Record<string, string> = {
   low:          '#3B8BD4',
   moderate:     '#EF9F27',
   high:         '#E24B4A',
   catastrophic: '#A32D2D',
 };
 
-// ─── ZoomToIncidents ─────────────────────────────────────────────────────────
+const FALLBACK_SEVERITY_COLOR = '#6b7280';
 
-// Auto-frames the map on the relevant incident(s) whenever the focus target
+// ─── ZoomToSubmissions ───────────────────────────────────────────────────────
+
+// Auto-frames the map on the relevant submission(s) whenever the focus target
 // changes. Centered + zoom heuristic (no Extent module — keeps bundle small).
-function ZoomToIncidents({
-  incidents,
+function ZoomToSubmissions({
+  submissions,
   focused,
 }: {
-  incidents: Incident[];
-  focused: Incident | null;
+  submissions: LifelineSubmission[];
+  focused: LifelineSubmission | null;
 }) {
-  const viewRef = useMapView();
+  const { ref: viewRef, isReady } = useMapView();
   const lastTargetRef = useRef<string>('');
 
   useEffect(() => {
     const view = viewRef.current;
-    if (!view) return;
+    if (!view || !isReady) return;
 
-    if (focused) {
-      const key = `focus:${focused.id}`;
+    if (focused && focused.coordinates) {
+      const key = `focus:${focused.objectId}`;
       if (lastTargetRef.current === key) return;
       lastTargetRef.current = key;
       void view.goTo({ center: focused.coordinates, zoom: 12 });
       return;
     }
 
-    if (incidents.length === 0) {
-      // No incidents → fall back to a broad CONUS-ish view
+    const withCoords = submissions.filter((s) => s.coordinates !== null);
+
+    if (withCoords.length === 0) {
       const key = 'empty';
       if (lastTargetRef.current === key) return;
       lastTargetRef.current = key;
@@ -74,16 +77,16 @@ function ZoomToIncidents({
       return;
     }
 
-    if (incidents.length === 1) {
-      const key = `single:${incidents[0].id}`;
+    if (withCoords.length === 1) {
+      const key = `single:${withCoords[0].objectId}`;
       if (lastTargetRef.current === key) return;
       lastTargetRef.current = key;
-      void view.goTo({ center: incidents[0].coordinates, zoom: 11 });
+      void view.goTo({ center: withCoords[0].coordinates!, zoom: 11 });
       return;
     }
 
-    const lons = incidents.map((i) => i.coordinates[0]);
-    const lats = incidents.map((i) => i.coordinates[1]);
+    const lons = withCoords.map((s) => s.coordinates![0]);
+    const lats = withCoords.map((s) => s.coordinates![1]);
     const minLon = Math.min(...lons);
     const maxLon = Math.max(...lons);
     const minLat = Math.min(...lats);
@@ -102,7 +105,7 @@ function ZoomToIncidents({
     if (lastTargetRef.current === key) return;
     lastTargetRef.current = key;
     void view.goTo({ center: [centerLon, centerLat], zoom });
-  }, [incidents, focused, viewRef]);
+  }, [submissions, focused, viewRef, isReady]);
 
   return null;
 }
@@ -173,15 +176,21 @@ function BackButton({ onPress, label }: { onPress: () => void; label: string }) 
 export interface MobileLifelinePageProps {
   lifelineId: LifelineId;
   lifeline: Lifeline;
-  incidents: Incident[];   // already filtered to this lifeline
-  event: CrisisEvent;      // for IncidentsLayer (needs full lifelines map)
+  event: CrisisEvent;
   onBack: () => void;
 }
 
-export default function MobileLifelinePage({
+export default function MobileLifelinePage(props: MobileLifelinePageProps) {
+  return (
+    <MapViewProvider>
+      <MobileLifelinePageBody {...props} />
+    </MapViewProvider>
+  );
+}
+
+function MobileLifelinePageBody({
   lifelineId,
   lifeline,
-  incidents,
   event,
   onBack,
 }: MobileLifelinePageProps) {
@@ -198,9 +207,11 @@ export default function MobileLifelinePage({
   const [notes, setNotes] = useState(lifeline.notes ?? '');
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const [focusedIncident, setFocusedIncident] = useState<Incident | null>(null);
+  const [focusedSubmission, setFocusedSubmission] = useState<LifelineSubmission | null>(null);
 
-  // Escape returns to home
+  const submissionsQuery = useLifelineSubmissions(lifelineId);
+  const submissions = submissionsQuery.data ?? [];
+
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
@@ -277,13 +288,8 @@ export default function MobileLifelinePage({
       {/* ── Map slot (small, fixed) ── */}
       <div className={styles.mapSlot}>
         <MapView>
-          <IncidentsLayer
-            incidents={event.incidents}
-            activeView={lifelineId}
-            lifelines={event.lifelines}
-            visible
-          />
-          <ZoomToIncidents incidents={incidents} focused={focusedIncident} />
+          <IncidentsLayer activeView={lifelineId} visible />
+          <ZoomToSubmissions submissions={submissions} focused={focusedSubmission} />
         </MapView>
       </div>
 
@@ -332,41 +338,59 @@ export default function MobileLifelinePage({
 
         <section className={styles.section}>
           <span className={styles.sectionLabel}>
-            {t('lifeline.drawer.incidents')} ({incidents.length})
+            {t('lifeline.drawer.incidents')}
+            {submissionsQuery.isSuccess ? ` (${submissions.length})` : ''}
           </span>
-          {incidents.length === 0 ? (
+          {submissionsQuery.isLoading ? (
+            <p className={styles.emptyHint}>{t('lifeline.drawer.loadingIncidents')}</p>
+          ) : submissionsQuery.isError ? (
+            <p className={styles.emptyHint}>{t('lifeline.drawer.loadIncidentsError')}</p>
+          ) : submissions.length === 0 ? (
             <p className={styles.emptyHint}>{t('lifeline.drawer.noIncidents')}</p>
           ) : (
             <ul className={styles.incidentList}>
-              {incidents.map((incident) => {
-                const isFocused = focusedIncident?.id === incident.id;
+              {submissions.map((sub) => {
+                const isFocused = focusedSubmission?.objectId === sub.objectId;
+                const sevKey = sub.severity?.toLowerCase() ?? '';
+                const sevColor = KNOWN_SEVERITY_COLORS[sevKey] ?? FALLBACK_SEVERITY_COLOR;
+                const canLocate = sub.coordinates !== null;
                 return (
-                  <li key={incident.id}>
+                  <li key={sub.objectId}>
                     <button
                       type="button"
                       className={`${styles.incidentCard}${isFocused ? ` ${styles.incidentCardFocused}` : ''}`}
                       onClick={() =>
-                        setFocusedIncident(isFocused ? null : incident)
+                        canLocate &&
+                        setFocusedSubmission(isFocused ? null : sub)
                       }
                       aria-pressed={isFocused}
+                      disabled={!canLocate}
                     >
-                      <p className={styles.incidentTitle}>{incident.title}</p>
+                      {sub.aiInterpretation && (
+                        <p className={styles.incidentTitle}>{sub.aiInterpretation}</p>
+                      )}
                       <div className={styles.incidentMeta}>
-                        <span
-                          className={styles.severityChip}
-                          style={{ backgroundColor: SEVERITY_COLORS[incident.severity] }}
-                        >
-                          {incident.severity}
-                        </span>
-                        <span className={styles.incidentTs}>
-                          {fmtTime(incident.timestamp)}
-                        </span>
+                        {sub.severity && (
+                          <span
+                            className={styles.severityChip}
+                            style={{ backgroundColor: sevColor }}
+                          >
+                            {sub.severity}
+                          </span>
+                        )}
+                        {sub.submittedAt && (
+                          <span className={styles.incidentTs}>
+                            {fmtTime(sub.submittedAt)}
+                          </span>
+                        )}
                       </div>
-                      <span className={styles.incidentLocate}>
-                        {isFocused
-                          ? t('lifeline.drawer.showAll', 'Show all')
-                          : t('lifeline.drawer.locateOnMap')}
-                      </span>
+                      {canLocate && (
+                        <span className={styles.incidentLocate}>
+                          {isFocused
+                            ? t('lifeline.drawer.showAll', 'Show all')
+                            : t('lifeline.drawer.locateOnMap')}
+                        </span>
+                      )}
                     </button>
                   </li>
                 );

@@ -1,8 +1,7 @@
 import { type ReactNode, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import type MapViewType from '@arcgis/core/views/MapView';
 import { useMapConfig } from '@contexts/MapConfigContext';
-import { MapViewContext } from './useMapView';
+import { useMapView } from './useMapView';
 import styles from './MapView.module.css';
 
 const SUBMISSIONS_LAYER_TITLE = 'lifeline_submissions';
@@ -17,8 +16,8 @@ export default function MapView({ children }: { children?: ReactNode }) {
     statusTableId,
     setResolvedLayerIds,
   } = useMapConfig();
+  const { ref: viewRef, setIsReady } = useMapView();
   const containerRef = useRef<HTMLDivElement>(null);
-  const viewRef = useRef<MapViewType | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
@@ -66,28 +65,28 @@ export default function MapView({ children }: { children?: ReactNode }) {
         }
 
         setIsLoading(false);
+        setIsReady(true);
       });
     });
 
     return () => {
       cancelled = true;
+      setIsReady(false);
       viewRef.current?.destroy();
       viewRef.current = null;
     };
   }, []);
 
   return (
-    <MapViewContext.Provider value={viewRef}>
-      <div className={styles.wrapper}>
-        {isLoading && <div className={styles.skeleton} aria-hidden="true" />}
-        <div
-          ref={containerRef}
-          className={styles.container}
-          role="application"
-          aria-label={t('map.ariaLabel')}
-        />
-        {!isLoading && children}
-      </div>
-    </MapViewContext.Provider>
+    <div className={styles.wrapper}>
+      {isLoading && <div className={styles.skeleton} aria-hidden="true" />}
+      <div
+        ref={containerRef}
+        className={styles.container}
+        role="application"
+        aria-label={t('map.ariaLabel')}
+      />
+      {!isLoading && children}
+    </div>
   );
 }

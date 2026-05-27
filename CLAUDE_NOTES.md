@@ -2,6 +2,48 @@
 
 ---
 
+## 2026-05-27 — Side panel rewired to lifeline_submissions (desktop + mobile)
+
+**What changed**: the "Affected Incidents" list in `LifelineDrawer` (desktop) and `MobileLifelinePage` (mobile) no longer reads from `activeEvent.incidents` (mockData). Both query the WebMap-owned `lifeline_submissions` FeatureLayer via a new react-query hook. Sorted by `submitted_at DESC`. Mock data still drives the lifeline tile statuses, status notes, and event selector — those rewires are downstream.
+
+**New hook** `src/hooks/useLifelineSubmissions.ts`:
+- `useLifelineSubmissions(lifelineId: LifelineId | null) → UseQueryResult<LifelineSubmission[], Error>`
+- Query key: `['lifelineSubmissions', mapVersion, submissionsLayerId, lifelineId]` — `mapVersion` is in the key so a portal/WebMap swap invalidates cached lists.
+- `enabled: isReady && lifelineId !== null && submissionsLayerId !== null` — gates on both the map being loaded AND the layer ID being resolved by discovery.
+- `staleTime: 30_000`, `num: 100`. `where: lifeline_id = '<id>'` — `lifelineId` is the closed `LifelineId` union so injection-safe.
+- Maps `feature.attributes` to a typed `LifelineSubmission`: `objectId`, `lifelineId`, `severity` (raw `severity_official` string), `submittedAt` (ISO; accepts both epoch-ms numbers and ISO strings from AGOL), `aiInterpretation`, `incidentName` (read but not surfaced in UI yet — for the upcoming incident-grouping work), `coordinates` (extracted from Point geometry via `.longitude`/`.latitude`; null if non-point or missing).
+
+**`MapViewContext` lifted to caller — pre-existing bug fixed as a side effect**: previously `MapViewContext.Provider` lived inside `MapView.tsx`, so `LifelineDrawer` (rendered as a *sibling* of MapView in App.tsx) got the default null-ref from context. That meant `locateIncident` was a silent no-op on desktop. New shape:
+- `useMapView()` now returns `{ ref, isReady, setIsReady }` (was just `MutableRefObject`).
+- New `MapViewProvider` component owns the ref + `isReady` state and exposes it via context.
+- `MapView` reads the ref from context (writes to `ref.current`; toggles `isReady` after `view.when()`; clears on cleanup).
+- Caller must wrap the tree in `MapViewProvider`. Desktop: `App.tsx` wraps the content area; the `key={mapVersion}` lives on the *provider* now so a config save resets ref + readiness state alongside the MapView remount. Mobile: `MobileLifelinePage` self-wraps with `MapViewProvider` (each detail-page entry is its own provider scope).
+- Consumers updated: `IncidentsLayer`, `MapToolbar`, `LifelineDrawer`, `MobileLifelinePage`. Locate-on-map now actually pans the map on desktop.
+
+**Card content** (both desktop and mobile):
+- `ai_interpretation` becomes the primary body text (no separate title — `lifeline_id` is the filter, not a per-row title).
+- Severity chip uses `severity_official` raw string. Color mapped from `KNOWN_SEVERITY_COLORS` (`low | moderate | high | catastrophic`) with a gray fallback for unknown values — defensive against schema drift.
+- Timestamp formatted from `submittedAt`.
+- Locate button only rendered when `coordinates !== null`.
+
+**Mobile-specific**: `ZoomToIncidents` renamed to `ZoomToSubmissions`, takes `LifelineSubmission[]` keyed by `objectId`. The card button is `disabled` when coordinates are null. `IncidentsLayer` call dropped its now-unused `incidents` / `lifelines` props.
+
+**Renamed**: `src/features/map/useMapView.ts` → `.tsx` (now exports a JSX-returning `MapViewProvider`). Used `git mv` so history is preserved.
+
+**i18n added** to `lifeline.drawer`: `loadingIncidents`, `loadIncidentsError`. `noIncidents` message changed from "No incidents affecting this lifeline." → "No submissions for this lifeline yet." to reflect the data source.
+
+**Not yet wired (per current scope)**:
+- Event-selector → submission filter (will use the upcoming `incident_name` attribute the user is adding).
+- Admin "Create new incident" UX in the event-selector dropdown.
+- `lifeline_status` table → tile colors / status edits (currently still mock).
+- mockData removal — staying for now, will go when the above land.
+
+**Files**: `useMapView.ts → .tsx`, `MapView.tsx`, `IncidentsLayer.tsx`, `MapToolbar.tsx`, `LifelineDrawer.tsx`, `MobileLifelinePage.tsx`, `MobileShell.tsx`, `App.tsx`, new `hooks/useLifelineSubmissions.ts`, `i18n/locales/en.json`.
+
+**Not browser-verified**: `tsc --noEmit` exit 0. Real exercise needs the lifeline_submissions layer populated with rows having the expected attributes.
+
+---
+
 ## 2026-05-27 — Portal URL + Verify, WebMap-owned layer discovery
 
 **Pivot**: dashboard now points at an AGOL **portal + WebMap** (no separate FeatureService URL). The two pieces of lifeline data live *inside* the WebMap:

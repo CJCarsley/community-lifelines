@@ -4,13 +4,13 @@ import { useRadioGroup, useRadio } from '@react-aria/radio';
 import { useRadioGroupState } from '@react-stately/radio';
 import { useMapView } from '@features/map/useMapView';
 import { useUpdateLifelineStatus } from '@hooks/useUpdateLifelineStatus';
+import { useLifelineSubmissions, type LifelineSubmission } from '@hooks/useLifelineSubmissions';
 import { useAuth, EDIT_ROLES } from '@hooks/useAuth';
-import type { Incident, Lifeline, LifelineId, LifelineStatus } from '@types';
+import type { Lifeline, LifelineId, LifelineStatus } from '@types';
 import styles from './LifelineDrawer.module.css';
 
 // ─── Constants ───────────────────────────────────────────────────────────────
 
-// Nebraska enhanced status palette — must match the graphic halo colors
 const STATUS_COLORS: Record<LifelineStatus, string> = {
   unknown:  '#888780',
   stable:   '#2E8B47',
@@ -22,12 +22,14 @@ const STATUS_COLORS: Record<LifelineStatus, string> = {
 
 const STATUS_ORDER: LifelineStatus[] = ['unknown', 'stable', 'minor', 'moderate', 'major', 'extreme'];
 
-const SEVERITY_COLORS: Record<Incident['severity'], string> = {
+const KNOWN_SEVERITY_COLORS: Record<string, string> = {
   low:          '#3B8BD4',
   moderate:     '#EF9F27',
   high:         '#E24B4A',
   catastrophic: '#A32D2D',
 };
+
+const FALLBACK_SEVERITY_COLOR = '#6b7280';
 
 // ─── StatusRadioOption ────────────────────────────────────────────────────────
 
@@ -64,7 +66,6 @@ function StatusRadioOption({ value, label, state }: StatusRadioOptionProps) {
 export interface LifelineDrawerProps {
   lifelineId: LifelineId;
   lifeline: Lifeline;
-  incidents: Incident[];
   eventId: string;
   onClose: () => void;
 }
@@ -72,25 +73,25 @@ export interface LifelineDrawerProps {
 export default function LifelineDrawer({
   lifelineId,
   lifeline,
-  incidents,
   eventId,
   onClose,
 }: LifelineDrawerProps) {
   const { t } = useTranslation();
   const { user } = useAuth();
-  const viewRef = useMapView();
+  const { ref: viewRef } = useMapView();
   const updateMutation = useUpdateLifelineStatus();
 
   const canEdit = user !== null && user.roles.some((r) => EDIT_ROLES.includes(r));
 
-  // Optimistic local status
   const [localStatus, setLocalStatus] = useState<LifelineStatus>(lifeline.status);
   const localStatusRef = useRef(localStatus);
   localStatusRef.current = localStatus;
 
-  // Notes with debounced autosave
   const [notes, setNotes] = useState(lifeline.notes ?? '');
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const submissionsQuery = useLifelineSubmissions(lifelineId);
+  const submissions = submissionsQuery.data ?? [];
 
   // ── Focus management ──────────────────────────────────────────────────────
 
@@ -134,11 +135,11 @@ export default function LifelineDrawer({
     }, 800);
   };
 
-  const locateIncident = useCallback(
-    (incident: Incident) => {
+  const locateSubmission = useCallback(
+    (submission: LifelineSubmission) => {
       const view = viewRef.current;
-      if (!view) return;
-      void view.goTo({ center: incident.coordinates, zoom: 12 });
+      if (!view || !submission.coordinates) return;
+      void view.goTo({ center: submission.coordinates, zoom: 12 });
     },
     [viewRef],
   );
@@ -234,36 +235,53 @@ export default function LifelineDrawer({
           )}
         </div>
 
-        {/* Affected incidents */}
+        {/* Affected incidents (lifeline_submissions) */}
         <div className={styles.section}>
           <span className={styles.sectionLabel}>
-            {t('lifeline.drawer.incidents')} ({incidents.length})
+            {t('lifeline.drawer.incidents')}
+            {submissionsQuery.isSuccess ? ` (${submissions.length})` : ''}
           </span>
-          {incidents.length === 0 ? (
+          {submissionsQuery.isLoading ? (
+            <p className={styles.emptyHint}>{t('lifeline.drawer.loadingIncidents')}</p>
+          ) : submissionsQuery.isError ? (
+            <p className={styles.emptyHint}>{t('lifeline.drawer.loadIncidentsError')}</p>
+          ) : submissions.length === 0 ? (
             <p className={styles.emptyHint}>{t('lifeline.drawer.noIncidents')}</p>
           ) : (
             <div className={styles.incidentList}>
-              {incidents.map((incident) => (
-                <div key={incident.id} className={styles.incidentCard}>
-                  <p className={styles.incidentTitle}>{incident.title}</p>
-                  <div className={styles.incidentMeta}>
-                    <span
-                      className={styles.severityChip}
-                      style={{ backgroundColor: SEVERITY_COLORS[incident.severity] }}
-                    >
-                      {incident.severity}
-                    </span>
-                    <span className={styles.incidentTs}>{fmtTime(incident.timestamp)}</span>
+              {submissions.map((sub) => {
+                const sevKey = sub.severity?.toLowerCase() ?? '';
+                const sevColor = KNOWN_SEVERITY_COLORS[sevKey] ?? FALLBACK_SEVERITY_COLOR;
+                return (
+                  <div key={sub.objectId} className={styles.incidentCard}>
+                    {sub.aiInterpretation && (
+                      <p className={styles.incidentTitle}>{sub.aiInterpretation}</p>
+                    )}
+                    <div className={styles.incidentMeta}>
+                      {sub.severity && (
+                        <span
+                          className={styles.severityChip}
+                          style={{ backgroundColor: sevColor }}
+                        >
+                          {sub.severity}
+                        </span>
+                      )}
+                      {sub.submittedAt && (
+                        <span className={styles.incidentTs}>{fmtTime(sub.submittedAt)}</span>
+                      )}
+                    </div>
+                    {sub.coordinates && (
+                      <button
+                        type="button"
+                        className={styles.locateBtn}
+                        onClick={() => locateSubmission(sub)}
+                      >
+                        {t('lifeline.drawer.locateOnMap')}
+                      </button>
+                    )}
                   </div>
-                  <button
-                    type="button"
-                    className={styles.locateBtn}
-                    onClick={() => locateIncident(incident)}
-                  >
-                    {t('lifeline.drawer.locateOnMap')}
-                  </button>
-                </div>
-              ))}
+                );
+              })}
             </div>
           )}
         </div>

@@ -63,7 +63,9 @@
       "notesPlaceholder":   "Add notes for this lifeline…",
       "notesEmpty":         "No notes recorded.",
       "incidents":          "Affected Incidents",
-      "noIncidents":        "No incidents affecting this lifeline.",
+      "noIncidents":        "No submissions for this lifeline yet.",
+      "loadingIncidents":   "Loading submissions…",
+      "loadIncidentsError": "Could not load submissions.",
       "statusControl":      "Change Status",
       "locateOnMap":        "Locate on map",
       "showAll":            "Show all incidents"
