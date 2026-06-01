@@ -2,6 +2,37 @@
 
 ---
 
+## 2026-05-29 — AGE service-account token broker (Amplify Gen 2 backend bootstrap)
+
+**Context**: migrating off the AWS-hosted private AGOL portal to a *different* AWS-hosted private AGOL portal, accessed via a single **service account** (OAuth2 client_credentials). All app data now comes from one WebMap on the new portal: `lifeline_submissions` layer, `incidents` layer, `lifeline_status` table — already set up on the new portal as of 5/28.
+
+**First backend ever** — `amplify/` did not exist before this. CLAUDE_NOTES history said "backend not configured / USE_MOCK_DATA=true"; this bootstraps Gen 2. `amplify/backend.ts` created from scratch.
+
+**`amplify/functions/age-token/`** — token broker Lambda. NOT behind API Gateway; invoked only by the (future) AGE proxy.
+- `resource.ts`: `defineFunction({ name:'age-token', runtime:20, timeoutSeconds:15, memoryMB:256 })`. Env: `AGE_SECRET_ARN` (ARN only, never the value), `AGE_SECRET_REGION='us-west-2'`, `AGE_TOKEN_ENDPOINT='https://secure.dcgis.org/portal/sharing/rest/oauth2/token'`.
+- `handler.ts`: cold-start fetch secret via AWS SDK v3 (`@aws-sdk/client-secrets-manager`), POST client_credentials grant as `application/x-www-form-urlencoded` (NOT JSON). Single module-level cache `{ token, expiresAt } | null` + a separate module-level creds cache. Returns cached token while >5 min life remains, else refreshes. Parses standard OAuth2 `{ access_token, expires_in(sec) }`. Accepts secret JSON with either `clientId/clientSecret` or `client_id/client_secret` keys.
+- **502 pattern**: handler has no API Gateway, so it returns a typed discriminated union `AgeTokenResult` = `{ok:true,token,expiresAt}` | `{ok:false,statusCode:502,message}`. AGE auth failure → `ok:false/502/generic message`. Real error logged to CloudWatch as **message-only** (never token, secret, or full stack).
+
+**`amplify/functions/shared/ageToken.ts`** — shared contract, dependency-light. Exports `AgeTokenResult`/`AgeTokenSuccess`/`AgeTokenFailure` types, `AgeTokenAuthError(message, statusCode=502)`, `TokenProvider` interface (`getToken(): Promise<string>`), and `createAgeTokenProvider(functionName, region?)`. The provider invokes the age-token Lambda (`@aws-sdk/client-lambda`, RequestResponse), re-throws failures as `AgeTokenAuthError` so the proxy maps to 502. Only the bearer token crosses the boundary — clientId/secret never leave the broker.
+
+**`amplify/backend.ts`**: `defineBackend({ ageToken })` + `backend.ageToken.resources.lambda.addToRolePolicy(PolicyStatement{ actions:['secretsmanager:GetSecretValue'], resources:[<exact secret ARN>] })`. Nothing else granted.
+
+**Deps NOT yet installed** (required before `ampx sandbox`/deploy):
+```
+npm i -D @aws-amplify/backend @aws-amplify/backend-cli aws-cdk-lib constructs esbuild tsx typescript --legacy-peer-deps
+npm i @aws-sdk/client-secrets-manager @aws-sdk/client-lambda --legacy-peer-deps
+```
+
+**Open / next (Step 5)**: the AGE **proxy** function. Wire in backend.ts: `backend.ageProxy.addEnvironment('AGE_TOKEN_FN', backend.ageToken.resources.lambda.functionName)` + `backend.ageToken.resources.lambda.grantInvoke(backend.ageProxy.resources.lambda)`; in the proxy handler call `createAgeTokenProvider(env.AGE_TOKEN_FN, env.AWS_REGION)`.
+
+**Verify before relying on it**:
+- Secret JSON key casing (`clientId` vs `client_id`).
+- Portal `oauth2/token` response shape — code assumes `{ access_token, expires_in(sec) }`. If it returns `{ token, expires(epoch-ms) }` (generateToken style), `requestToken()` parse needs changing.
+
+**Not deployed / not typechecked** — backend toolchain not installed yet, so `$amplify/env/age-token` import and CDK types won't resolve until deps land.
+
+---
+
 ## 2026-05-27 — Side panel rewired to lifeline_submissions (desktop + mobile)
 
 **What changed**: the "Affected Incidents" list in `LifelineDrawer` (desktop) and `MobileLifelinePage` (mobile) no longer reads from `activeEvent.incidents` (mockData). Both query the WebMap-owned `lifeline_submissions` FeatureLayer via a new react-query hook. Sorted by `submitted_at DESC`. Mock data still drives the lifeline tile statuses, status notes, and event selector — those rewires are downstream.
