@@ -47,7 +47,7 @@ function deriveEventSeverity(statuses: LifelineStatus[]): EventSeverity {
   return 'low';
 }
 
-export default function App() {
+export default function App({ signOut }: { signOut?: () => void }) {
   const { t } = useTranslation();
   const isMobile = useIsMobile();
   const { user } = useAuth();
@@ -130,7 +130,9 @@ export default function App() {
               {t('admin.navButton')}
             </button>
           )}
-          <button className={styles.signOutBtn}>{t('auth.signOut')}</button>
+          <button className={styles.signOutBtn} onClick={signOut}>
+            {t('auth.signOut')}
+          </button>
         </div>
       </header>
 

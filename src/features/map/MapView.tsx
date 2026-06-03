@@ -2,6 +2,7 @@ import { type ReactNode, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useMapConfig } from '@contexts/MapConfigContext';
 import { useMapView } from './useMapView';
+import { installArcgisProxy } from './arcgisProxy';
 import styles from './MapView.module.css';
 
 const SUBMISSIONS_LAYER_TITLE = 'lifeline_submissions';
@@ -29,16 +30,15 @@ export default function MapView({ children }: { children?: ReactNode }) {
     void Promise.all([
       import('@arcgis/core/WebMap'),
       import('@arcgis/core/views/MapView'),
-      import('@arcgis/core/widgets/ScaleBar'),
       import('@arcgis/core/portal/Portal'),
     ]).then(([
       { default: WebMap },
       { default: ArcGISMapView },
-      { default: ScaleBar },
       { default: Portal },
     ]) => {
       if (cancelled || !containerRef.current) return;
 
+      installArcgisProxy(portalUrl);
       const portal = new Portal({ url: portalUrl });
       const map = new WebMap({ portalItem: { id: webMapId, portal } });
 
@@ -50,7 +50,6 @@ export default function MapView({ children }: { children?: ReactNode }) {
         ui: { components: ['zoom', 'attribution'] },
       });
 
-      view.ui.add(new ScaleBar({ view }), 'bottom-left');
       viewRef.current = view;
 
       void view.when(() => {

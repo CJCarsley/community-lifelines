@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { useButton } from '@react-aria/button';
 import { useMapConfig, type ResolvedLayerIds } from '@contexts/MapConfigContext';
 import { useAuth } from '@hooks/useAuth';
+import { installArcgisProxy } from '@features/map/arcgisProxy';
 import styles from './AdminPage.module.css';
 
 const PORTAL_URL_INPUT_ID = 'admin-portal-url';
@@ -50,6 +51,7 @@ export default function AdminPage() {
   const [draftPortalUrl, setDraftPortalUrl] = useState(portalUrl);
   const [draftWebMapId, setDraftWebMapId] = useState(webMapId);
   const [savedAt, setSavedAt] = useState<number | null>(null);
+  const [saveError, setSaveError] = useState(false);
   const [verify, setVerify] = useState<VerifyState>({ kind: 'idle' });
 
   const trimmedPortal = draftPortalUrl.trim();
@@ -85,6 +87,7 @@ export default function AdminPage() {
         import('@arcgis/core/WebMap'),
         import('@arcgis/core/portal/Portal'),
       ]);
+      installArcgisProxy(trimmedPortal);
       const portal = new Portal({ url: trimmedPortal });
       const map = new WebMap({ portalItem: { id: trimmedId, portal } });
       await map.load();
@@ -109,11 +112,16 @@ export default function AdminPage() {
     }
   };
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (!validation.canSave) return;
     const resolved = verifiedMatchesDraft ? verify.resolved : null;
-    setMapConfig(trimmedPortal, trimmedId, resolved);
-    setSavedAt(Date.now());
+    setSaveError(false);
+    try {
+      await setMapConfig(trimmedPortal, trimmedId, resolved);
+      setSavedAt(Date.now());
+    } catch {
+      setSaveError(true);
+    }
   };
 
   if (!isAdmin) return null;
@@ -150,6 +158,7 @@ export default function AdminPage() {
             onChange={(e) => {
               setDraftPortalUrl(e.target.value);
               setSavedAt(null);
+              setSaveError(false);
               setVerify({ kind: 'idle' });
             }}
             placeholder={t('admin.portalUrlPlaceholder')}
@@ -177,6 +186,7 @@ export default function AdminPage() {
             onChange={(e) => {
               setDraftWebMapId(e.target.value);
               setSavedAt(null);
+              setSaveError(false);
               setVerify({ kind: 'idle' });
             }}
             placeholder={t('admin.webMapIdPlaceholder')}
@@ -205,13 +215,18 @@ export default function AdminPage() {
           />
           <ActionButton
             variant="primary"
-            onPress={handleSave}
+            onPress={() => void handleSave()}
             isDisabled={!validation.canSave}
             label={t('common.save')}
           />
           {savedAt !== null && (
             <span className={styles.savedHint} role="status">
               {t('admin.saved')}
+            </span>
+          )}
+          {saveError && (
+            <span className={styles.verifyError} role="status">
+              {t('admin.saveError')}
             </span>
           )}
         </div>

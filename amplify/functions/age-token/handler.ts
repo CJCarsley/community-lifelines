@@ -27,14 +27,13 @@ async function loadCredentials(): Promise<Credentials> {
   );
   if (!res.SecretString) throw new Error('secret has no SecretString');
 
-  const parsed = JSON.parse(res.SecretString) as {
-    clientId?: string;
-    clientSecret?: string;
-    client_id?: string;
-    client_secret?: string;
-  };
-  const clientId = parsed.clientId ?? parsed.client_id;
-  const clientSecret = parsed.clientSecret ?? parsed.client_secret;
+  const parsed = JSON.parse(res.SecretString) as Record<string, string>;
+  // Tolerate key-casing drift: clientId / clientID / client_id, etc. The actual
+  // secret uses `clientID` (capital D), which the earlier exact-match missed.
+  const byLower: Record<string, string> = {};
+  for (const [k, v] of Object.entries(parsed)) byLower[k.toLowerCase()] = v;
+  const clientId = byLower['clientid'] ?? byLower['client_id'];
+  const clientSecret = byLower['clientsecret'] ?? byLower['client_secret'];
   if (!clientId || !clientSecret) {
     throw new Error('secret missing clientId/clientSecret');
   }
