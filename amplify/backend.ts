@@ -52,9 +52,11 @@ const proxyUrl = backend.ageProxy.resources.lambda.addFunctionUrl({
     // The ArcGIS JS API sends portal requests with credentials mode 'include',
     // so origins must be explicit (not '*') and allowCredentials must be true.
     // Each Amplify branch deploys its own backend (own proxy), so list every
-    // frontend origin that should reach the proxy. Branch subdomains are
-    // https://<branch, '/'->'-'>.<appId>.amplifyapp.com.
+    // frontend origin that should reach the proxy: the production custom domain,
+    // the Amplify branch subdomains (https://<branch '/'->'-'>.<appId>.amplifyapp.com),
+    // and localhost for dev.
     allowedOrigins: [
+      'https://eoc.dogis.org',
       'http://localhost:5173',
       'https://main.d3qicauq9rd01b.amplifyapp.com',
       'https://feature-admin-settings.d3qicauq9rd01b.amplifyapp.com',
