@@ -1,7 +1,15 @@
-import React, { createContext, useCallback, useContext, useState } from 'react';
+import React, { createContext, useCallback, useContext, useEffect, useState } from 'react';
+import { generateClient } from 'aws-amplify/data';
+import { fetchAuthSession } from 'aws-amplify/auth';
+import type { Schema } from '../../amplify/data/resource';
 
 const INITIAL_PORTAL_URL = 'https://www.arcgis.com';
 const INITIAL_WEB_MAP_ID = '';
+
+// Single shared config record. Every client reads this id; admins overwrite it.
+const SINGLETON_ID = 'global';
+
+const client = generateClient<Schema>();
 
 export interface ResolvedLayerIds {
   submissionsLayerId: string;
@@ -14,7 +22,12 @@ interface MapConfigContextValue {
   submissionsLayerId: string | null;
   statusTableId: string | null;
   mapVersion: number;
-  setMapConfig: (portalUrl: string, webMapId: string, resolved?: ResolvedLayerIds | null) => void;
+  /** Persists to the shared AppConfig record. Rejects if the user isn't an Admin. */
+  setMapConfig: (
+    portalUrl: string,
+    webMapId: string,
+    resolved?: ResolvedLayerIds | null,
+  ) => Promise<void>;
   setResolvedLayerIds: (submissionsLayerId: string, statusTableId: string) => void;
 }
 
@@ -27,8 +40,51 @@ export function MapConfigProvider({ children }: { children: React.ReactNode }) {
   const [statusTableId, setStatusTableId] = useState<string | null>(null);
   const [mapVersion, setMapVersion] = useState(0);
 
+  // Hydrate the shared config on mount (any signed-in user may read it).
+  useEffect(() => {
+    let active = true;
+    void client.models.AppConfig.get({ id: SINGLETON_ID })
+      .then(({ data }) => {
+        if (!active || !data) return;
+        setPortalUrl(data.portalUrl);
+        setWebMapId(data.webMapId);
+        setSubmissionsLayerId(data.submissionsLayerId ?? null);
+        setStatusTableId(data.statusTableId ?? null);
+        setMapVersion((v) => v + 1);
+      })
+      .catch(() => {
+        /* leave defaults if unreadable */
+      });
+    return () => {
+      active = false;
+    };
+  }, []);
+
   const setMapConfig = useCallback(
-    (nextPortalUrl: string, nextWebMapId: string, resolved?: ResolvedLayerIds | null) => {
+    async (
+      nextPortalUrl: string,
+      nextWebMapId: string,
+      resolved?: ResolvedLayerIds | null,
+    ) => {
+      const session = await fetchAuthSession();
+      const email = session.tokens?.idToken?.payload.email;
+      const input = {
+        id: SINGLETON_ID,
+        portalUrl: nextPortalUrl,
+        webMapId: nextWebMapId,
+        submissionsLayerId: resolved?.submissionsLayerId ?? null,
+        statusTableId: resolved?.statusTableId ?? null,
+        updatedBy: typeof email === 'string' ? email : null,
+      };
+
+      // Upsert the singleton. AppSync rejects this for non-Admins.
+      const { data: existing } = await client.models.AppConfig.get({ id: SINGLETON_ID });
+      const { errors } = existing
+        ? await client.models.AppConfig.update(input)
+        : await client.models.AppConfig.create(input);
+      if (errors?.length) throw new Error(errors[0].message);
+
+      // Apply locally only after the write succeeds.
       setPortalUrl(nextPortalUrl);
       setWebMapId(nextWebMapId);
       setSubmissionsLayerId(resolved?.submissionsLayerId ?? null);
@@ -38,6 +94,8 @@ export function MapConfigProvider({ children }: { children: React.ReactNode }) {
     [],
   );
 
+  // Layer ids discovered at map-load time — session-local, not persisted
+  // (writing requires Admin; everyone can rediscover from the web map).
   const setResolvedLayerIds = useCallback((subId: string, tableId: string) => {
     setSubmissionsLayerId(subId);
     setStatusTableId(tableId);

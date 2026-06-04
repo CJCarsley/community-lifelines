@@ -3,4 +3,5 @@ dist
 .env
 .env.local
 amplify_outputs.json
+.amplify/
 .idea/

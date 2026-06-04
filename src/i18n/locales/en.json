@@ -142,6 +142,7 @@
     "verifyMapError": "Could not load Web Map. Check the Portal URL and Web Map ID.",
     "verifyLayerMissing": "Web Map loaded, but no layer titled 'lifeline_submissions' was found.",
     "verifyTableMissing": "Web Map loaded, but no table titled 'lifeline_status' was found.",
-    "saved": "Saved"
+    "saved": "Saved",
+    "saveError": "Could not save. You may not have Admin permission."
   }
 }
