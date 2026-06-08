@@ -9,12 +9,7 @@ import { MapViewProvider, useMapView } from '@features/map/useMapView';
 import { useUpdateLifelineStatus } from '@hooks/useUpdateLifelineStatus';
 import { useLifelineSubmissions, type LifelineSubmission } from '@hooks/useLifelineSubmissions';
 import { useAuth, EDIT_ROLES } from '@hooks/useAuth';
-import type {
-  CrisisEvent,
-  Lifeline,
-  LifelineId,
-  LifelineStatus,
-} from '@types';
+import type { Lifeline, LifelineId, LifelineStatus } from '@types';
 import styles from './MobileLifelinePage.module.css';
 
 // ─── Shared palettes (kept in sync with LifelineDrawer) ──────────────────────
@@ -176,7 +171,6 @@ function BackButton({ onPress, label }: { onPress: () => void; label: string }) 
 export interface MobileLifelinePageProps {
   lifelineId: LifelineId;
   lifeline: Lifeline;
-  event: CrisisEvent;
   onBack: () => void;
 }
 
@@ -191,7 +185,6 @@ export default function MobileLifelinePage(props: MobileLifelinePageProps) {
 function MobileLifelinePageBody({
   lifelineId,
   lifeline,
-  event,
   onBack,
 }: MobileLifelinePageProps) {
   const { t } = useTranslation();
@@ -226,9 +219,9 @@ function MobileLifelinePageBody({
   const handleStatusChange = useCallback(
     (status: LifelineStatus) => {
       setLocalStatus(status);
-      updateMutation.mutate({ eventId: event.id, lifelineId, status });
+      updateMutation.mutate({ lifelineId, status });
     },
-    [event.id, lifelineId, updateMutation],
+    [lifelineId, updateMutation],
   );
 
   const handleNotesChange = (value: string) => {
@@ -236,7 +229,6 @@ function MobileLifelinePageBody({
     if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
     saveTimerRef.current = setTimeout(() => {
       updateMutation.mutate({
-        eventId: event.id,
         lifelineId,
         status: localStatusRef.current,
         notes: value,

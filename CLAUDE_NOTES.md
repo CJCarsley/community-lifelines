@@ -2,6 +2,32 @@
 
 ---
 
+## 2026-06-04 — Shipped admin-settings to PRODUCTION (Amplify Hosting fullstack)
+
+**Status: LIVE in prod.** The Cognito + AppConfig + AGE-proxy feature (see 2026-06-02 entry) is merged to `main` and deployed. Production is served from the custom domain **https://eoc.dogis.org**. Verified end-to-end on prod: sign-in → Admin save persists (shared across browsers) → WebMap loads through the AGE proxy with no portal login.
+
+**Architecture fact — per-branch backends + per-pool users.** Each Amplify branch (and the local `ampx sandbox`) deploys its OWN backend stack: its own Cognito user pool, AppConfig table, and AGE-proxy Function URL. Consequences:
+- Cognito users do NOT carry across environments. Each pool needs its own admin user (`admin-create-user` + `admin-add-user-to-group Admin`). Pools so far: sandbox `us-west-2_vxdS7StQJ`, branch `feature/admin-settings` `us-west-2_pe2dZYInf`, and `main`/prod (its own — get id from the branch auth stack outputs or `amplify_outputs.json` in the build).
+- The proxy `allowedOrigins` (in `amplify/backend.ts`) must list **every** origin the app is served from for that env. Currently: `https://eoc.dogis.org` (prod custom domain), `https://main.…amplifyapp.com`, `https://feature-admin-settings.…amplifyapp.com`, `http://localhost:5173`. **Any new domain/branch that serves the app needs adding here + a redeploy**, or the credentialed-CORS preflight fails with "No Access-Control-Allow-Origin".
+
+**Deploy gotchas hit & fixed getting to prod (Amplify Hosting):**
+1. **`amplify.yml` backend phase.** Added `npx ampx pipeline-deploy --branch $AWS_BRANCH --app-id $AWS_APP_ID` so Hosting stands up the backend per branch and writes `amplify_outputs.json` before the frontend build. The frontend now hard-depends on that file existing at build time.
+2. **`npm ci` → `npm install`.** The backend toolchain (`aws-cdk-lib`, `cdk-from-cfn` native binaries, `@smithy/*`) trips npm's optional-dependency lockfile bug, so strict `npm ci` rejects an otherwise-valid lock ("Invalid/Missing … from lock file"). Both phases use `npm install --legacy-peer-deps`. Frontend-only builds passed before because these deps weren't present.
+3. **App IAM service role (the big one).** The app was frontend-only, so `iamServiceRoleArn` was `None` → `ampx pipeline-deploy` had no identity to deploy CDK → `BootstrapDetectionError` (build ran as AWS-managed `AemiliaControlPlaneLambda-CodeBuildRole` in acct 395333095307, no perms in 433306266182). **`dcgis-app-deployer` CANNOT fix this** — lacks `iam:CreateRole` AND `iam:PassRole` by design. An ADMIN attached the existing, already-proven role **`arn:aws:iam::433306266182:role/amplifyconsole-backend-role`** (warming-cooling-centers uses it) via the Amplify console / `amplify update-app --iam-service-role-arn`. After that, re-running builds needs no admin.
+
+**Ops reminders (carried from sandbox debugging):** run `ampx`/AWS from PowerShell not Git Bash (HOME mismatch breaks SDK cred resolution); `$env:AWS_REGION="us-west-2"`; only one `ampx sandbox` at a time; tail CloudWatch with `export MSYS_NO_PATHCONV=1` (Git Bash mangles the leading `/` in log-group names); `~/.aws/credentials`+`config` are deny-listed for Claude — use the `dcgis-app-deployer` profile by name only.
+
+**Remaining / next:**
+- **Trim sandbox if done:** the local sandbox stack (`us-west-2_vxdS7StQJ`) stays up (billing) until `ampx sandbox delete`. Delete it if no longer needed for dev.
+- **Okta federation (deferred):** uncomment `externalProviders` in `amplify/auth/resource.ts`, supply OIDC issuer + CLIENT_ID/CLIENT_SECRET (via `defineSecret`, never inline) + callback/logout URLs. Groups already drive authz, so app code won't change. Add the Hosted-UI/OAuth domain at the same time.
+- **Role-based UI beyond Admin:** groups `Editor`/`LifelineManager`/`Viewer` exist in the pool but the app currently only gates on `Admin`. Wire finer-grained UI when needed.
+- **CORS allowlist hygiene:** consider dropping `localhost`/old-branch origins from prod's list later; harmless but loose.
+- **Lifeline status tiles still mock** (`lifeline_status` table → tile colors) — separate workstream, unchanged by this work.
+
+**Key commits (feature/admin-settings → main):** `6e3ccbb` (feature), `dbb931c` (Hosting backend phase + prod CORS origins), `c86bde7` (lockfile fix), `7280199` (add eoc.dogis.org custom-domain origin, on main).
+
+---
+
 ## 2026-06-02 — Cognito auth + shared AppConfig persistence + AGE portal proxy (feature/admin-settings)
 
 **Goal**: (1) make Admin map config persist across all browsers/users until an admin changes it; (2) gate the site behind Cognito (native logins now, Okta later); (3) connect to the ArcGIS Enterprise portal via the service-account client_id/secret so users never see a portal login. Branch `feature/admin-settings` off `feature/submissions-wiring` (carries the age-token backend + amplify backend deps).

@@ -4,6 +4,7 @@ import { useMapConfig } from '@contexts/MapConfigContext';
 import type FeatureLayerType from '@arcgis/core/layers/FeatureLayer';
 import type GraphicType from '@arcgis/core/Graphic';
 import type PointType from '@arcgis/core/geometry/Point';
+import { toIsoOrNull, toStringOrNull } from '@utils/arcgisAttrs';
 import type { LifelineId } from '@types';
 
 const SUBMISSIONS_QUERY_LIMIT = 100;
@@ -16,23 +17,6 @@ export interface LifelineSubmission {
   aiInterpretation: string | null;
   incidentName: string | null;
   coordinates: [number, number] | null;
-}
-
-function toStringOrNull(v: unknown): string | null {
-  if (v === null || v === undefined) return null;
-  const s = String(v).trim();
-  return s.length > 0 ? s : null;
-}
-
-function toIsoOrNull(v: unknown): string | null {
-  if (v === null || v === undefined) return null;
-  // AGOL date fields come through as epoch ms numbers
-  if (typeof v === 'number' && Number.isFinite(v)) return new Date(v).toISOString();
-  if (typeof v === 'string') {
-    const t = Date.parse(v);
-    return Number.isNaN(t) ? null : new Date(t).toISOString();
-  }
-  return null;
 }
 
 function featureToSubmission(feature: GraphicType): LifelineSubmission {
@@ -80,7 +64,7 @@ export function useLifelineSubmissions(
       if (!layer) return [];
 
       const result = await layer.queryFeatures({
-        where: `lifeline_id = '${lifelineId}'`,
+        where: `lifeline_id = '${lifelineId.replace(/'/g, "''")}'`,
         outFields: ['*'],
         orderByFields: ['submitted_at DESC'],
         returnGeometry: true,
