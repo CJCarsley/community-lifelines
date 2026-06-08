@@ -5,7 +5,6 @@ import type FeatureLayerType from '@arcgis/core/layers/FeatureLayer';
 import type GraphicType from '@arcgis/core/Graphic';
 import type PointType from '@arcgis/core/geometry/Point';
 import { toIsoOrNull, toStringOrNull } from '@utils/arcgisAttrs';
-import { toStoredLifelineId } from './useLifelineStatuses';
 import type { LifelineId } from '@types';
 
 const SUBMISSIONS_QUERY_LIMIT = 100;
@@ -64,15 +63,8 @@ export function useLifelineSubmissions(
       ) as FeatureLayerType | undefined;
       if (!layer) return [];
 
-      // Match both slug conventions: our singular LifelineId and the table's
-      // stored form (hazmat is plural `hazardous-materials`). Robust whichever
-      // form the submissions layer uses.
-      const stored = toStoredLifelineId(lifelineId);
-      const slugs = stored === lifelineId ? [lifelineId] : [lifelineId, stored];
-      const inList = slugs.map((s) => `'${s.replace(/'/g, "''")}'`).join(', ');
-
       const result = await layer.queryFeatures({
-        where: `lifeline_id IN (${inList})`,
+        where: `lifeline_id = '${lifelineId.replace(/'/g, "''")}'`,
         outFields: ['*'],
         orderByFields: ['submitted_at DESC'],
         returnGeometry: true,

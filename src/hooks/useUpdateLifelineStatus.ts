@@ -2,7 +2,6 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { fetchAuthSession } from 'aws-amplify/auth';
 import { useMapConfig } from '@contexts/MapConfigContext';
 import { loadStatusTable } from '@features/map/statusTable';
-import { toStoredLifelineId } from './useLifelineStatuses';
 import type { LifelineId, LifelineStatus } from '@types';
 
 interface UpdateLifelineVars {
@@ -34,12 +33,11 @@ export function useUpdateLifelineStatus() {
 
       const { default: Graphic } = await import('@arcgis/core/Graphic');
       const oidField = table.objectIdField;
-      const storedId = toStoredLifelineId(lifelineId);
 
-      // Locate the existing row's OBJECTID. storedId is from the closed
+      // Locate the existing row's OBJECTID. lifelineId is from the closed
       // LifelineId union (injection-safe) but quote-escape defensively.
       const existing = await table.queryFeatures({
-        where: `lifeline_id = '${storedId.replace(/'/g, "''")}'`,
+        where: `lifeline_id = '${lifelineId.replace(/'/g, "''")}'`,
         outFields: [oidField],
         returnGeometry: false,
         num: 1,
@@ -65,7 +63,7 @@ export function useUpdateLifelineStatus() {
           }
         : {
             addFeatures: [
-              new Graphic({ attributes: { ...attributes, lifeline_id: storedId } }),
+              new Graphic({ attributes: { ...attributes, lifeline_id: lifelineId } }),
             ],
           };
 

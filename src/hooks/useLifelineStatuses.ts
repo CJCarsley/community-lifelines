@@ -38,29 +38,13 @@ export interface LifelineStatusRecord {
 
 export type LifelineStatusMap = Partial<Record<LifelineId, LifelineStatusRecord>>;
 
-// Stored slugs that differ from our LifelineId union. The table uses the plural
-// `hazardous-materials`; our type is singular `hazardous-material`.
-const SLUG_ALIASES: Record<string, LifelineId> = {
-  'hazardous-materials': 'hazardous-material',
-};
-const STORED_SLUG: Partial<Record<LifelineId, string>> = Object.fromEntries(
-  Object.entries(SLUG_ALIASES).map(([stored, id]) => [id, stored]),
-);
-
-// Normalize the stored lifeline_id to a canonical slug. Accepts underscore form
-// (safety_security) and known aliases; rejects anything not in the set.
+// Normalize the stored lifeline_id to a canonical slug. Tolerates underscore
+// form (safety_security) and casing; rejects anything not in the set.
 function toLifelineId(v: unknown): LifelineId | null {
   const s = toStringOrNull(v);
   if (s === null) return null;
   const slug = s.toLowerCase().replace(/_/g, '-');
-  if (slug in SLUG_ALIASES) return SLUG_ALIASES[slug];
   return LIFELINE_IDS.has(slug) ? (slug as LifelineId) : null;
-}
-
-// Inverse of toLifelineId for writes: our canonical slug → the table's stored
-// form (e.g. hazardous-material → hazardous-materials).
-export function toStoredLifelineId(id: LifelineId): string {
-  return STORED_SLUG[id] ?? id;
 }
 
 function toStatus(v: unknown): LifelineStatus {
