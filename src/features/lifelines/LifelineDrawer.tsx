@@ -66,14 +66,12 @@ function StatusRadioOption({ value, label, state }: StatusRadioOptionProps) {
 export interface LifelineDrawerProps {
   lifelineId: LifelineId;
   lifeline: Lifeline;
-  eventId: string;
   onClose: () => void;
 }
 
 export default function LifelineDrawer({
   lifelineId,
   lifeline,
-  eventId,
   onClose,
 }: LifelineDrawerProps) {
   const { t } = useTranslation();
@@ -117,9 +115,9 @@ export default function LifelineDrawer({
   const handleStatusChange = useCallback(
     (status: LifelineStatus) => {
       setLocalStatus(status);
-      updateMutation.mutate({ eventId, lifelineId, status });
+      updateMutation.mutate({ lifelineId, status });
     },
-    [eventId, lifelineId, updateMutation],
+    [lifelineId, updateMutation],
   );
 
   const handleNotesChange = (value: string) => {
@@ -127,7 +125,6 @@ export default function LifelineDrawer({
     if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
     saveTimerRef.current = setTimeout(() => {
       updateMutation.mutate({
-        eventId,
         lifelineId,
         status: localStatusRef.current,
         notes: value,

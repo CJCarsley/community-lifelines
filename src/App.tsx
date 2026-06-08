@@ -11,6 +11,8 @@ import { MapViewProvider } from '@features/map/useMapView';
 import { useIsMobile } from '@hooks/useIsMobile';
 import { useAuth } from '@hooks/useAuth';
 import { useMapConfig } from '@contexts/MapConfigContext';
+import { useLifelineStatuses } from '@hooks/useLifelineStatuses';
+import { mergeLifelineStatuses } from '@utils/mergeLifelineStatuses';
 import { useCrisisEventContext } from './contexts/CrisisEventContext';
 import { useTranslation } from 'react-i18next';
 import type { LifelineId, LifelineStatus } from '@types';
@@ -59,13 +61,19 @@ export default function App({ signOut }: { signOut?: () => void }) {
   const [incidentsVisible, setIncidentsVisible] = useState(true);
 
   const { activeEvent } = useCrisisEventContext();
+  const { data: liveStatuses } = useLifelineStatuses();
+
+  // Live lifeline_status rows overlay the mock event lifelines (status/notes/
+  // lastUpdated). Drives the strip tiles, drawer, and event-severity badge.
+  const lifelines = useMemo(
+    () => mergeLifelineStatuses(activeEvent?.lifelines, liveStatuses),
+    [activeEvent, liveStatuses],
+  );
 
   const eventSeverity = useMemo<EventSeverity | null>(() => {
-    if (!activeEvent) return null;
-    return deriveEventSeverity(
-      Object.values(activeEvent.lifelines).map((l) => l.status),
-    );
-  }, [activeEvent]);
+    if (!lifelines) return null;
+    return deriveEventSeverity(Object.values(lifelines).map((l) => l.status));
+  }, [lifelines]);
 
   // Per-lifeline tile refs — used to return focus when drawer closes (desktop)
   const lifelineButtonRefs = useMemo(
@@ -144,7 +152,7 @@ export default function App({ signOut }: { signOut?: () => void }) {
           {/* ── Lifeline graphic strip ── */}
           <LifelineStrip
             className={styles.stripRow}
-            lifelines={activeEvent?.lifelines ?? null}
+            lifelines={lifelines}
             activeView={mapActiveView}
             onSelect={handleSelectLifeline}
             buttonRefs={lifelineButtonRefs}
@@ -169,12 +177,11 @@ export default function App({ signOut }: { signOut?: () => void }) {
                   />
                 </MapView>
 
-                {isLifelineActive && activeEvent && (
+                {isLifelineActive && activeEvent && lifelines && (
                   <LifelineDrawer
                     key={mapActiveView}
                     lifelineId={mapActiveView}
-                    lifeline={activeEvent.lifelines[mapActiveView]}
-                    eventId={activeEvent.id}
+                    lifeline={lifelines[mapActiveView]}
                     onClose={handleDrawerClose}
                   />
                 )}
