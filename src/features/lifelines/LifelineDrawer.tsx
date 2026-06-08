@@ -49,12 +49,11 @@ function StatusRadioOption({ value, label, state }: StatusRadioOptionProps) {
 
   return (
     <span className={styles.segmentedOption}>
-      <input {...inputProps} ref={ref} className={styles.srOnly} />
       <label
-        htmlFor={inputProps.id}
         className={`${styles.segmentedLabel}${isSelected ? ` ${styles.segmentedLabelSelected}` : ''}`}
         style={isSelected ? { backgroundColor: color } : undefined}
       >
+        <input {...inputProps} ref={ref} className={styles.srOnly} />
         {label}
       </label>
     </span>
