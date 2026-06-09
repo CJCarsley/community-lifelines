@@ -65,12 +65,14 @@ function StatusRadioOption({ value, label, state }: StatusRadioOptionProps) {
 export interface LifelineDrawerProps {
   lifelineId: LifelineId;
   lifeline: Lifeline;
+  incidentId: string;
   onClose: () => void;
 }
 
 export default function LifelineDrawer({
   lifelineId,
   lifeline,
+  incidentId,
   onClose,
 }: LifelineDrawerProps) {
   const { t } = useTranslation();
@@ -85,9 +87,11 @@ export default function LifelineDrawer({
   localStatusRef.current = localStatus;
 
   const [notes, setNotes] = useState(lifeline.notes ?? '');
+  const notesRef = useRef(notes);
+  notesRef.current = notes;
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const submissionsQuery = useLifelineSubmissions(lifelineId);
+  const submissionsQuery = useLifelineSubmissions(lifelineId, incidentId);
   const submissions = submissionsQuery.data ?? [];
 
   // ── Focus management ──────────────────────────────────────────────────────
@@ -114,9 +118,10 @@ export default function LifelineDrawer({
   const handleStatusChange = useCallback(
     (status: LifelineStatus) => {
       setLocalStatus(status);
-      updateMutation.mutate({ lifelineId, status });
+      // Carry current notes so each snapshot row is self-contained.
+      updateMutation.mutate({ incidentId, lifelineId, status, notes: notesRef.current });
     },
-    [lifelineId, updateMutation],
+    [incidentId, lifelineId, updateMutation],
   );
 
   const handleNotesChange = (value: string) => {
@@ -124,6 +129,7 @@ export default function LifelineDrawer({
     if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
     saveTimerRef.current = setTimeout(() => {
       updateMutation.mutate({
+        incidentId,
         lifelineId,
         status: localStatusRef.current,
         notes: value,

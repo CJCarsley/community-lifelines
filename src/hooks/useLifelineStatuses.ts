@@ -1,24 +1,17 @@
 import { useQuery, type UseQueryResult } from '@tanstack/react-query';
 import { useMapConfig } from '@contexts/MapConfigContext';
 import { loadStatusTable } from '@features/map/statusTable';
+import { seedLifelineStatus } from '@features/map/seedLifelineStatus';
+import { LIFELINE_IDS } from '@utils/defaultLifelines';
 import { toIsoOrNull, toStringOrNull } from '@utils/arcgisAttrs';
 import type GraphicType from '@arcgis/core/Graphic';
 import type { LifelineId, LifelineStatus } from '@types';
 
-const STATUS_QUERY_LIMIT = 100;
+// Generous: 8 lifelines × snapshot history per incident. We only keep the
+// latest per lifeline, but must fetch enough rows to find them.
+const STATUS_QUERY_LIMIT = 2000;
 
-// The 8 canonical lifeline slugs — used to validate the table's lifeline_id join
-// (a silent slug mismatch would blank every tile).
-const LIFELINE_IDS: ReadonlySet<string> = new Set<LifelineId>([
-  'safety-security',
-  'food-hydration-shelter',
-  'health-medical',
-  'water-systems',
-  'energy',
-  'communications',
-  'transportation',
-  'hazardous-material',
-]);
+const LIFELINE_ID_SET: ReadonlySet<string> = new Set<string>(LIFELINE_IDS);
 
 const VALID_STATUSES: ReadonlySet<string> = new Set<LifelineStatus>([
   'unknown',
@@ -44,7 +37,7 @@ function toLifelineId(v: unknown): LifelineId | null {
   const s = toStringOrNull(v);
   if (s === null) return null;
   const slug = s.toLowerCase().replace(/_/g, '-');
-  return LIFELINE_IDS.has(slug) ? (slug as LifelineId) : null;
+  return LIFELINE_ID_SET.has(slug) ? (slug as LifelineId) : null;
 }
 
 function toStatus(v: unknown): LifelineStatus {
@@ -69,33 +62,52 @@ function featureToStatus(
   };
 }
 
-// Live lifeline tile statuses from the WebMap-owned `lifeline_status` table.
+// Live lifeline tile statuses for one incident, from the WebMap-owned
+// `lifeline_status` table.
 //
-// Unlike useLifelineSubmissions this is VIEWLESS (see loadStatusTable): the strip
-// (desktop) and the mobile home grid render outside any MapView, and the mobile
-// home never mounts a map at all.
-export function useLifelineStatuses(): UseQueryResult<LifelineStatusMap, Error> {
+// Append-only/snapshots: a status change inserts a NEW timestamped row, so the
+// current status is the LATEST row per lifeline_id (ordered by status_updated_at
+// desc; first seen wins). If the incident has no rows yet, seed 8 `unknown` rows
+// (a pre-existing incident's first selection) and return unknowns.
+//
+// VIEWLESS (see loadStatusTable): the strip + mobile home render outside any map.
+export function useLifelineStatuses(
+  incidentId: string | null,
+): UseQueryResult<LifelineStatusMap, Error> {
   const { portalUrl, webMapId, statusTableId, mapVersion } = useMapConfig();
 
   return useQuery<LifelineStatusMap, Error>({
-    queryKey: ['lifelineStatuses', mapVersion, webMapId, statusTableId],
-    enabled: webMapId !== '',
+    queryKey: ['lifelineStatuses', mapVersion, webMapId, statusTableId, incidentId],
+    enabled: webMapId !== '' && incidentId !== null,
     staleTime: 30_000,
     queryFn: async () => {
       const table = await loadStatusTable(portalUrl, webMapId, statusTableId);
-      if (!table) return {};
+      if (!table || !incidentId) return {};
 
       const result = await table.queryFeatures({
-        where: '1=1',
+        where: `incidentid = '${incidentId.replace(/'/g, "''")}'`,
         outFields: ['*'],
+        orderByFields: ['status_updated_at DESC'],
         returnGeometry: false,
         num: STATUS_QUERY_LIMIT,
       });
 
+      // No rows for this incident yet → seed 8 unknowns, then return unknowns.
+      if (result.features.length === 0) {
+        await seedLifelineStatus(table, incidentId);
+        return Object.fromEntries(
+          LIFELINE_IDS.map((id) => [
+            id,
+            { status: 'unknown', notes: null, lastUpdated: null, updatedBy: null },
+          ]),
+        ) as LifelineStatusMap;
+      }
+
+      // Rows are ordered newest-first; keep the first (latest) per lifeline_id.
       const out: LifelineStatusMap = {};
       for (const feature of result.features) {
         const row = featureToStatus(feature);
-        if (row) out[row.id] = row.record;
+        if (row && !(row.id in out)) out[row.id] = row.record;
       }
       return out;
     },

@@ -10,7 +10,7 @@ import styles from './MobileShell.module.css';
 
 export default function MobileShell() {
   const { activeIncident } = useIncidentContext();
-  const { data: liveStatuses } = useLifelineStatuses();
+  const { data: liveStatuses } = useLifelineStatuses(activeIncident?.incidentId ?? null);
   const [activeLifeline, setActiveLifeline] = useState<LifelineId | null>(null);
 
   const lifelines = useMemo(
@@ -35,6 +35,7 @@ export default function MobileShell() {
           key={activeLifeline}
           lifelineId={activeLifeline}
           lifeline={lifelines[activeLifeline]}
+          incidentId={activeIncident.incidentId}
           onBack={handleBack}
         />
       )}

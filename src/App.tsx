@@ -62,7 +62,7 @@ export default function App({ signOut }: { signOut?: () => void }) {
   const [incidentsVisible, setIncidentsVisible] = useState(true);
 
   const { activeIncident } = useIncidentContext();
-  const { data: liveStatuses } = useLifelineStatuses();
+  const { data: liveStatuses } = useLifelineStatuses(activeIncident?.incidentId ?? null);
 
   // Live lifeline_status rows overlay the default (all-unknown) base. Drives the
   // strip tiles, drawer, and event-severity badge.
@@ -178,6 +178,7 @@ export default function App({ signOut }: { signOut?: () => void }) {
                     key={mapActiveView}
                     lifelineId={mapActiveView}
                     lifeline={lifelines[mapActiveView]}
+                    incidentId={activeIncident.incidentId}
                     onClose={handleDrawerClose}
                   />
                 )}

@@ -1,6 +1,8 @@
 import type { Lifeline, LifelineId } from '@types';
 
-const LIFELINE_IDS: LifelineId[] = [
+// The 8 canonical lifeline slugs (shared: default base, status read validation,
+// and per-incident seeding).
+export const LIFELINE_IDS: LifelineId[] = [
   'safety-security',
   'food-hydration-shelter',
   'health-medical',
