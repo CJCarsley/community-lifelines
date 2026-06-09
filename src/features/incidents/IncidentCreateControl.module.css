@@ -92,6 +92,47 @@
   color: #fff;
 }
 
+.typeList {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  max-height: 168px;
+  overflow-y: auto;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: 5px;
+  padding: 3px;
+}
+
+.typeOption {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  background: none;
+  border: none;
+  border-radius: 4px;
+  color: rgba(255, 255, 255, 0.85);
+  font-size: 0.82rem;
+  text-align: left;
+  padding: 5px 7px;
+  cursor: pointer;
+}
+
+.typeOption:hover {
+  background: rgba(255, 255, 255, 0.07);
+}
+
+.typeOptionActive {
+  background: rgba(59, 139, 212, 0.35);
+  color: #fff;
+}
+
+.typeOptionLabel {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .error {
   margin: 10px 0 0;
   color: #ffb4b0;

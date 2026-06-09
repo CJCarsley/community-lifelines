@@ -51,6 +51,7 @@
         "line": "Line",
         "area": "Area"
       },
+      "incidentTypeLabel": "Incident type",
       "start": "Draw on map",
       "drawHint": "Draw the {{type}} on the map, then finish (double-click or Enter).",
       "cancel": "Cancel",

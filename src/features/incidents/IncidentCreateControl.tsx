@@ -12,6 +12,8 @@ import {
   SKETCH_TOOL,
   type IncidentGeometryKind,
 } from './incidentLayers';
+import { useIncidentTypes, INCIDENT_TYPE_FIELD } from './useIncidentTypes';
+import IncidentTypePreview from './IncidentTypePreview';
 import type GeometryType from '@arcgis/core/geometry/Geometry';
 import type SketchViewModelType from '@arcgis/core/widgets/Sketch/SketchViewModel';
 import type GraphicsLayerType from '@arcgis/core/layers/GraphicsLayer';
@@ -27,11 +29,18 @@ export default function IncidentCreateControl() {
   const { ref: viewRef, isReady } = useMapView();
   const { portalUrl, webMapId, statusTableId } = useMapConfig();
   const { incidents, setActiveIncidentId, isCreating, setIsCreating } = useIncidentContext();
+  const { types } = useIncidentTypes();
 
   const [mode, setMode] = useState<Mode>('form');
   const [name, setName] = useState('');
   const [kind, setKind] = useState<IncidentGeometryKind>('area');
+  const [typeCode, setTypeCode] = useState<string | number | null>(null);
   const [error, setError] = useState<string | null>(null);
+
+  // Default the incident type to the first domain value once loaded.
+  useEffect(() => {
+    if (typeCode === null && types.length > 0) setTypeCode(types[0].code);
+  }, [types, typeCode]);
 
   const sketchRef = useRef<{ vm: SketchViewModelType; layer: GraphicsLayerType } | null>(null);
 
@@ -84,10 +93,18 @@ export default function IncidentCreateControl() {
         const id = nextIncidentId(incidents.map((i) => i.incidentId));
         const { default: Graphic } = await import('@arcgis/core/Graphic');
 
+        const attributes: Record<string, unknown> = {
+          incidentid: id,
+          incidentnm: name.trim(),
+        };
+        // Only set incidenttp on a layer that actually has the field.
+        const hasTypeField = layer.fields?.some(
+          (f) => f.name.toLowerCase() === INCIDENT_TYPE_FIELD,
+        );
+        if (hasTypeField && typeCode !== null) attributes[INCIDENT_TYPE_FIELD] = typeCode;
+
         const result = await layer.applyEdits({
-          addFeatures: [
-            new Graphic({ geometry, attributes: { incidentid: id, incidentnm: name.trim() } }),
-          ],
+          addFeatures: [new Graphic({ geometry, attributes })],
         });
         const added = result.addFeatureResults?.[0];
         if (added?.error) throw new Error(added.error.message);
@@ -110,7 +127,7 @@ export default function IncidentCreateControl() {
         setMode('form');
       }
     },
-    [viewRef, kind, incidents, name, portalUrl, webMapId, statusTableId, queryClient, setActiveIncidentId, setIsCreating, cleanupSketch, t],
+    [viewRef, kind, typeCode, incidents, name, portalUrl, webMapId, statusTableId, queryClient, setActiveIncidentId, setIsCreating, cleanupSketch, t],
   );
 
   const startDraw = useCallback(async () => {
@@ -188,6 +205,27 @@ export default function IncidentCreateControl() {
           </button>
         ))}
       </div>
+
+      {types.length > 0 && (
+        <>
+          <span className={styles.label}>{t('incident.create.incidentTypeLabel')}</span>
+          <div className={styles.typeList}>
+            {types.map((it) => (
+              <button
+                key={String(it.code)}
+                type="button"
+                className={`${styles.typeOption}${typeCode === it.code ? ` ${styles.typeOptionActive}` : ''}`}
+                aria-pressed={typeCode === it.code}
+                disabled={saving}
+                onClick={() => setTypeCode(it.code)}
+              >
+                <IncidentTypePreview symbol={it.symbol} />
+                <span className={styles.typeOptionLabel}>{it.label}</span>
+              </button>
+            ))}
+          </div>
+        </>
+      )}
 
       {error && <p className={styles.error}>{error}</p>}
 
