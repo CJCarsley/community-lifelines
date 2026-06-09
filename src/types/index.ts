@@ -42,6 +42,14 @@ export interface Incident {
   description?: string;
 }
 
+// A real incident from the Incidents service, keyed by incidentid. One incident
+// may have geometry across the Points/Lines/Areas sublayers (same incidentid).
+export interface IncidentRecord {
+  incidentId: string;
+  name: string;
+  geometryTypes: ('point' | 'line' | 'area')[];
+}
+
 // Active crisis event
 export interface CrisisEvent {
   id: string;

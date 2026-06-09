@@ -5,7 +5,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { Authenticator } from '@aws-amplify/ui-react';
 import '@aws-amplify/ui-react/styles.css';
 import './amplifyConfig'; // side-effect: Amplify.configure
-import { CrisisEventProvider } from './contexts/CrisisEventContext';
+import { IncidentProvider } from './contexts/IncidentContext';
 import { MapConfigProvider } from './contexts/MapConfigContext';
 import '@arcgis/core/assets/esri/themes/light/main.css';
 import './index.css';
@@ -30,11 +30,11 @@ ReactDOM.createRoot(rootElement).render(
       <Authenticator hideSignUp>
         {({ signOut }) => (
           <MapConfigProvider>
-            <CrisisEventProvider>
+            <IncidentProvider>
               <Suspense fallback={null}>
                 <App signOut={signOut} />
               </Suspense>
-            </CrisisEventProvider>
+            </IncidentProvider>
           </MapConfigProvider>
         )}
       </Authenticator>
