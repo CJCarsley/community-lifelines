@@ -1,32 +1,5 @@
-/* Positioned top-left of the map area (toolbar lives top-right). */
-.launcher {
-  position: absolute;
-  top: 12px;
-  left: 12px;
-  z-index: 50;
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  background: #0e1c33;
-  color: #fff;
-  border: 1px solid rgba(255, 255, 255, 0.18);
-  border-radius: 6px;
-  padding: 7px 12px;
-  font-size: 0.82rem;
-  font-weight: 600;
-  cursor: pointer;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
-}
-
-.launcher:hover {
-  background: #16294a;
-}
-
-.plus {
-  font-size: 1.05rem;
-  line-height: 1;
-}
-
+/* The form/banner render inside the map area; toolbar lives top-right, so the
+   panel sits top-left below the zoom controls' clear zone. */
 .banner {
   position: absolute;
   top: 12px;
@@ -49,7 +22,8 @@
 .panel {
   position: absolute;
   top: 12px;
-  left: 12px;
+  left: 50%;
+  transform: translateX(-50%);
   z-index: 60;
   width: 280px;
   background: #0e1c33;

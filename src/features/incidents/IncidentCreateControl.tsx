@@ -17,7 +17,7 @@ import type SketchViewModelType from '@arcgis/core/widgets/Sketch/SketchViewMode
 import type GraphicsLayerType from '@arcgis/core/layers/GraphicsLayer';
 import styles from './IncidentCreateControl.module.css';
 
-type Mode = 'idle' | 'form' | 'sketching' | 'saving';
+type Mode = 'form' | 'sketching' | 'saving';
 
 const KINDS: IncidentGeometryKind[] = ['point', 'line', 'area'];
 
@@ -26,9 +26,9 @@ export default function IncidentCreateControl() {
   const queryClient = useQueryClient();
   const { ref: viewRef, isReady } = useMapView();
   const { portalUrl, webMapId, statusTableId } = useMapConfig();
-  const { incidents, setActiveIncidentId } = useIncidentContext();
+  const { incidents, setActiveIncidentId, isCreating, setIsCreating } = useIncidentContext();
 
-  const [mode, setMode] = useState<Mode>('idle');
+  const [mode, setMode] = useState<Mode>('form');
   const [name, setName] = useState('');
   const [kind, setKind] = useState<IncidentGeometryKind>('area');
   const [error, setError] = useState<string | null>(null);
@@ -51,12 +51,24 @@ export default function IncidentCreateControl() {
   // Tear down any in-progress sketch if the control unmounts (e.g. nav away).
   useEffect(() => cleanupSketch, [cleanupSketch]);
 
+  // React to the selector flipping the workflow on/off.
+  useEffect(() => {
+    if (isCreating) {
+      setMode('form');
+      setError(null);
+    } else {
+      cleanupSketch();
+      setName('');
+    }
+  }, [isCreating, cleanupSketch]);
+
   const reset = useCallback(() => {
     cleanupSketch();
-    setMode('idle');
+    setIsCreating(false);
     setName('');
     setError(null);
-  }, [cleanupSketch]);
+    setMode('form');
+  }, [cleanupSketch, setIsCreating]);
 
   const save = useCallback(
     async (geometry: GeometryType | null) => {
@@ -89,15 +101,16 @@ export default function IncidentCreateControl() {
 
         cleanupSketch();
         setActiveIncidentId(id);
-        setMode('idle');
+        setIsCreating(false);
         setName('');
+        setMode('form');
       } catch (e) {
         cleanupSketch();
         setError(e instanceof Error ? e.message : t('incident.create.error'));
         setMode('form');
       }
     },
-    [viewRef, kind, incidents, name, portalUrl, webMapId, statusTableId, queryClient, setActiveIncidentId, cleanupSketch, t],
+    [viewRef, kind, incidents, name, portalUrl, webMapId, statusTableId, queryClient, setActiveIncidentId, setIsCreating, cleanupSketch, t],
   );
 
   const startDraw = useCallback(async () => {
@@ -127,17 +140,7 @@ export default function IncidentCreateControl() {
     vm.create(SKETCH_TOOL[kind]);
   }, [viewRef, name, kind, save, t]);
 
-  if (!isReady) return null;
-
-  // ── Idle: launcher button ──
-  if (mode === 'idle') {
-    return (
-      <button type="button" className={styles.launcher} onClick={() => setMode('form')}>
-        <span className={styles.plus} aria-hidden="true">+</span>
-        {t('incident.create.new')}
-      </button>
-    );
-  }
+  if (!isReady || !isCreating) return null;
 
   // ── Sketching: hint banner ──
   if (mode === 'sketching') {
