@@ -17,11 +17,14 @@ export type IncidentSublayers = Record<IncidentGeometryKind, FeatureLayerType | 
 export const INCIDENT_ID_FIELD = 'incidentid';
 export const INCIDENT_NAME_FIELD = 'incidentnm';
 
-export function findIncidentSublayers(webmap: WebMapType): IncidentSublayers {
+// Accepts a loaded WebMap or a MapView's map (both expose `allLayers`).
+type LayerContainer = Pick<WebMapType, 'allLayers'>;
+
+export function findIncidentSublayers(map: LayerContainer): IncidentSublayers {
   const find = (title: string, id: string): FeatureLayerType | null => {
     const layer =
-      webmap.allLayers.find((l) => l.title === title) ??
-      webmap.allLayers.find((l) => l.id === id);
+      map.allLayers.find((l) => l.title === title) ??
+      map.allLayers.find((l) => l.id === id);
     return (layer as FeatureLayerType | undefined) ?? null;
   };
 
@@ -31,3 +34,22 @@ export function findIncidentSublayers(webmap: WebMapType): IncidentSublayers {
     area: find(SUBLAYERS.area.title, SUBLAYERS.area.id),
   };
 }
+
+// Next incident id = numeric max + 1, as a string. Falls back to "1" if no
+// existing ids parse as numbers. (incidentid is a string field but holds
+// numeric values in this deployment.)
+export function nextIncidentId(existingIds: string[]): string {
+  let max = 0;
+  for (const id of existingIds) {
+    const n = Number(id);
+    if (Number.isFinite(n) && n > max) max = Math.floor(n);
+  }
+  return String(max + 1);
+}
+
+// SketchViewModel create tool + ArcGIS geometry type per incident geometry kind.
+export const SKETCH_TOOL: Record<IncidentGeometryKind, 'point' | 'polyline' | 'polygon'> = {
+  point: 'point',
+  line: 'polyline',
+  area: 'polygon',
+};

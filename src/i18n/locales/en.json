@@ -39,6 +39,26 @@
       "catastrophic": "Catastrophic"
     }
   },
+  "incident": {
+    "create": {
+      "new": "New Incident",
+      "title": "Create Incident",
+      "nameLabel": "Incident name",
+      "namePlaceholder": "e.g. Elkhorn River Flooding",
+      "typeLabel": "Geometry",
+      "type": {
+        "point": "Point",
+        "line": "Line",
+        "area": "Area"
+      },
+      "start": "Draw on map",
+      "drawHint": "Draw the {{type}} on the map, then finish (double-click or Enter).",
+      "cancel": "Cancel",
+      "saving": "Saving…",
+      "error": "Could not create the incident. Check required fields and edit access.",
+      "nameRequired": "Enter an incident name."
+    }
+  },
   "lifeline": {
     "safety-security":        { "label": "Safety and Security",    "shortLabel": "Safety" },
     "food-hydration-shelter": { "label": "Food, Water, and Shelter","shortLabel": "Food/Hydration" },

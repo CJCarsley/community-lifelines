@@ -1,0 +1,167 @@
+/* Positioned top-left of the map area (toolbar lives top-right). */
+.launcher {
+  position: absolute;
+  top: 12px;
+  left: 12px;
+  z-index: 50;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: #0e1c33;
+  color: #fff;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: 6px;
+  padding: 7px 12px;
+  font-size: 0.82rem;
+  font-weight: 600;
+  cursor: pointer;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+}
+
+.launcher:hover {
+  background: #16294a;
+}
+
+.plus {
+  font-size: 1.05rem;
+  line-height: 1;
+}
+
+.banner {
+  position: absolute;
+  top: 12px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 60;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  background: #0e1c33;
+  color: #fff;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: 6px;
+  padding: 8px 14px;
+  font-size: 0.84rem;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.35);
+  max-width: 90%;
+}
+
+.panel {
+  position: absolute;
+  top: 12px;
+  left: 12px;
+  z-index: 60;
+  width: 280px;
+  background: #0e1c33;
+  color: #fff;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: 8px;
+  padding: 14px;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.45);
+}
+
+.title {
+  margin: 0 0 12px;
+  font-size: 0.95rem;
+  font-weight: 700;
+}
+
+.label {
+  display: block;
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: rgba(255, 255, 255, 0.6);
+  margin: 10px 0 4px;
+}
+
+.input {
+  width: 100%;
+  box-sizing: border-box;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 5px;
+  color: #fff;
+  padding: 7px 9px;
+  font-size: 0.85rem;
+}
+
+.input::placeholder {
+  color: rgba(255, 255, 255, 0.35);
+}
+
+.segmented {
+  display: flex;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 5px;
+  overflow: hidden;
+}
+
+.segment {
+  flex: 1;
+  background: rgba(255, 255, 255, 0.04);
+  color: rgba(255, 255, 255, 0.7);
+  border: none;
+  border-left: 1px solid rgba(255, 255, 255, 0.12);
+  padding: 7px 4px;
+  font-size: 0.78rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.segment:first-child {
+  border-left: none;
+}
+
+.segmentActive {
+  background: #3b8bd4;
+  color: #fff;
+}
+
+.error {
+  margin: 10px 0 0;
+  color: #ffb4b0;
+  font-size: 0.78rem;
+}
+
+.actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 14px;
+}
+
+.cancelBtn,
+.primaryBtn {
+  border-radius: 5px;
+  padding: 7px 12px;
+  font-size: 0.82rem;
+  font-weight: 600;
+  cursor: pointer;
+  border: 1px solid transparent;
+}
+
+.cancelBtn {
+  background: transparent;
+  color: rgba(255, 255, 255, 0.75);
+  border-color: rgba(255, 255, 255, 0.2);
+}
+
+.cancelBtn:hover {
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.primaryBtn {
+  background: #3b8bd4;
+  color: #fff;
+}
+
+.primaryBtn:hover {
+  background: #4a97dd;
+}
+
+.primaryBtn:disabled,
+.cancelBtn:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
