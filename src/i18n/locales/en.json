@@ -26,9 +26,9 @@
   },
   "topBar": {
     "lastUpdated": "Updated {{time}}",
-    "noEvents": "No Events Available",
-    "eventSelector": {
-      "label": "Select active event"
+    "noIncidents": "No Incidents Available",
+    "incidentSelector": {
+      "label": "Select active incident"
     }
   },
   "event": {

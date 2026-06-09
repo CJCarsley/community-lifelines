@@ -5,7 +5,7 @@ import MapToolbar from '@features/map/MapToolbar';
 import LifelineDrawer from '@features/lifelines/LifelineDrawer';
 import LifelineStrip from '@features/lifelines/LifelineStrip';
 import AdminPage from '@features/admin/AdminPage';
-import EventSelector from '@components/EventSelector';
+import IncidentSelector from '@components/IncidentSelector';
 import MobileShell from '@features/mobile/MobileShell';
 import { MapViewProvider } from '@features/map/useMapView';
 import { useIsMobile } from '@hooks/useIsMobile';
@@ -13,7 +13,8 @@ import { useAuth } from '@hooks/useAuth';
 import { useMapConfig } from '@contexts/MapConfigContext';
 import { useLifelineStatuses } from '@hooks/useLifelineStatuses';
 import { mergeLifelineStatuses } from '@utils/mergeLifelineStatuses';
-import { useCrisisEventContext } from './contexts/CrisisEventContext';
+import { DEFAULT_LIFELINES } from '@utils/defaultLifelines';
+import { useIncidentContext } from '@contexts/IncidentContext';
 import { useTranslation } from 'react-i18next';
 import type { LifelineId, LifelineStatus } from '@types';
 import styles from './App.module.css';
@@ -60,14 +61,14 @@ export default function App({ signOut }: { signOut?: () => void }) {
   const [activeView, setActiveView] = useState<ActiveView>('map');
   const [incidentsVisible, setIncidentsVisible] = useState(true);
 
-  const { activeEvent } = useCrisisEventContext();
+  const { activeIncident } = useIncidentContext();
   const { data: liveStatuses } = useLifelineStatuses();
 
-  // Live lifeline_status rows overlay the mock event lifelines (status/notes/
-  // lastUpdated). Drives the strip tiles, drawer, and event-severity badge.
+  // Live lifeline_status rows overlay the default (all-unknown) base. Drives the
+  // strip tiles, drawer, and event-severity badge.
   const lifelines = useMemo(
-    () => mergeLifelineStatuses(activeEvent?.lifelines, liveStatuses),
-    [activeEvent, liveStatuses],
+    () => mergeLifelineStatuses(DEFAULT_LIFELINES, liveStatuses),
+    [liveStatuses],
   );
 
   const eventSeverity = useMemo<EventSeverity | null>(() => {
@@ -111,8 +112,8 @@ export default function App({ signOut }: { signOut?: () => void }) {
         <span className={styles.topBarLeft}>{t('app.title')}</span>
 
         <div className={styles.topBarCenter}>
-          <EventSelector />
-          {activeEvent !== null && eventSeverity !== null && (
+          <IncidentSelector />
+          {activeIncident !== null && eventSeverity !== null && (
             <span
               className={styles.severityBadge}
               style={{ backgroundColor: SEVERITY_COLORS[eventSeverity] }}
@@ -123,11 +124,6 @@ export default function App({ signOut }: { signOut?: () => void }) {
         </div>
 
         <div className={styles.topBarRight}>
-          {activeEvent !== null && (
-            <span className={styles.lastUpdated}>
-              {t('topBar.lastUpdated', { time: activeEvent.startDate })}
-            </span>
-          )}
           {showAdminNav && (
             <button
               type="button"
@@ -165,7 +161,7 @@ export default function App({ signOut }: { signOut?: () => void }) {
             ) : (
               <MapViewProvider key={mapVersion}>
                 <MapView>
-                  {activeEvent && (
+                  {activeIncident && (
                     <IncidentsLayer
                       activeView={mapActiveView}
                       visible={incidentsVisible}
@@ -177,7 +173,7 @@ export default function App({ signOut }: { signOut?: () => void }) {
                   />
                 </MapView>
 
-                {isLifelineActive && activeEvent && lifelines && (
+                {isLifelineActive && activeIncident && lifelines && (
                   <LifelineDrawer
                     key={mapActiveView}
                     lifelineId={mapActiveView}

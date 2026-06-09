@@ -7,42 +7,39 @@ import { DismissButton, useOverlay } from '@react-aria/overlays';
 import { Item, useListState } from 'react-stately';
 import type { ListState } from '@react-stately/list';
 import type { Key } from '@react-types/shared';
-import { useCrisisEventContext } from '@contexts/CrisisEventContext';
-import type { CrisisEvent } from '@types';
-import styles from './EventSelector.module.css';
+import { useIncidentContext } from '@contexts/IncidentContext';
+import type { IncidentRecord } from '@types';
+import styles from './IncidentSelector.module.css';
 
 const TRUNCATE_LEN = 28;
+
+const GEOMETRY_ABBR: Record<IncidentRecord['geometryTypes'][number], string> = {
+  point: 'PT',
+  line: 'LN',
+  area: 'AR',
+};
 
 function truncate(s: string) {
   return s.length > TRUNCATE_LEN ? s.slice(0, TRUNCATE_LEN - 1) + '…' : s;
 }
 
-function formatDate(iso: string) {
-  return new Date(iso).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-}
+// ─── IncidentOption ───────────────────────────────────────────────────────────
 
-function getTypeClass(type: string): string {
-  const key = `type_${type}`;
-  return (styles as Record<string, string>)[key] ?? styles.type_default;
-}
-
-// ─── EventOption ──────────────────────────────────────────────────────────────
-
-interface EventOptionProps {
+interface IncidentOptionProps {
   // react-aria's Key is narrower than React.Key (excludes bigint added in React 19)
-  item: { key: Key; value: CrisisEvent | null };
-  state: ListState<CrisisEvent>;
+  item: { key: Key; value: IncidentRecord | null };
+  state: ListState<IncidentRecord>;
 }
 
-function EventOption({ item, state }: EventOptionProps) {
+function IncidentOption({ item, state }: IncidentOptionProps) {
   const ref = useRef<HTMLLIElement>(null);
   const { optionProps, isSelected, isFocused } = useOption(
     { key: item.key },
     state,
     ref as React.RefObject<HTMLElement>,
   );
-  const event = item.value;
-  if (!event) return null;
+  const incident = item.value;
+  if (!incident) return null;
 
   return (
     <li
@@ -56,21 +53,24 @@ function EventOption({ item, state }: EventOptionProps) {
         .filter(Boolean)
         .join(' ')}
     >
-      <span className={styles.optionName}>{event.name}</span>
+      <span className={styles.optionName}>{incident.name}</span>
       <span className={styles.optionMeta}>
-        <span className={`${styles.typeBadge} ${getTypeClass(event.type)}`}>{event.type}</span>
-        <span className={styles.optionDate}>{formatDate(event.startDate)}</span>
-        <span className={styles.optionCounties}>{event.affectedCounties.length} counties</span>
+        <span className={styles.optionId}>#{incident.incidentId}</span>
+        {incident.geometryTypes.map((g) => (
+          <span key={g} className={styles.geometryChip}>
+            {GEOMETRY_ABBR[g]}
+          </span>
+        ))}
       </span>
     </li>
   );
 }
 
-// ─── EventSelector ────────────────────────────────────────────────────────────
+// ─── IncidentSelector ─────────────────────────────────────────────────────────
 
-export default function EventSelector() {
+export default function IncidentSelector() {
   const { t } = useTranslation();
-  const { events, activeEvent, setActiveEventId } = useCrisisEventContext();
+  const { incidents, activeIncident, setActiveIncidentId } = useIncidentContext();
   const [isOpen, setIsOpen] = useState(false);
   const [overlayStyle, setOverlayStyle] = useState<React.CSSProperties>({});
 
@@ -95,7 +95,7 @@ export default function EventSelector() {
   const { buttonProps } = useButton(
     {
       onPress: isOpen ? close : open,
-      isDisabled: events.length === 0,
+      isDisabled: incidents.length === 0,
       'aria-haspopup': 'listbox',
       'aria-expanded': isOpen,
     },
@@ -107,27 +107,27 @@ export default function EventSelector() {
     overlayRef,
   );
 
-  const state = useListState<CrisisEvent>({
-    items: events,
-    children: (event) => (
-      <Item key={event.id} textValue={event.name}>
-        {event.name}
+  const state = useListState<IncidentRecord>({
+    items: incidents,
+    children: (incident) => (
+      <Item key={incident.incidentId} textValue={incident.name}>
+        {incident.name}
       </Item>
     ),
     selectionMode: 'single',
-    selectedKeys: activeEvent ? new Set([activeEvent.id]) : new Set<string>(),
+    selectedKeys: activeIncident ? new Set([activeIncident.incidentId]) : new Set<string>(),
     onSelectionChange: (keys) => {
       if (keys === 'all') return;
       const [id] = [...keys];
       if (id != null) {
-        setActiveEventId(String(id));
+        setActiveIncidentId(String(id));
         close();
       }
     },
   });
 
   const { listBoxProps } = useListBox(
-    { 'aria-label': t('topBar.eventSelector.label'), autoFocus: isOpen ? 'first' : false },
+    { 'aria-label': t('topBar.incidentSelector.label'), autoFocus: isOpen ? 'first' : false },
     state,
     listBoxRef,
   );
@@ -136,7 +136,7 @@ export default function EventSelector() {
     <div className={styles.container}>
       <button {...buttonProps} ref={triggerRef} className={styles.trigger}>
         <span className={styles.triggerName}>
-          {activeEvent ? truncate(activeEvent.name) : t('topBar.noEvents')}
+          {activeIncident ? truncate(activeIncident.name) : t('topBar.noIncidents')}
         </span>
         <svg
           className={`${styles.chevron}${isOpen ? ` ${styles.chevronOpen}` : ''}`}
@@ -155,9 +155,9 @@ export default function EventSelector() {
             <DismissButton onDismiss={close} />
             <ul {...listBoxProps} ref={listBoxRef} className={styles.listBox}>
               {[...state.collection].map((item) => (
-                <EventOption
+                <IncidentOption
                   key={item.key}
-                  item={item as { key: Key; value: CrisisEvent | null }}
+                  item={item as { key: Key; value: IncidentRecord | null }}
                   state={state}
                 />
               ))}

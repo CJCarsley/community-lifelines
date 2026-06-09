@@ -102,29 +102,21 @@
   margin-top: 4px;
 }
 
-.optionDate,
-.optionCounties {
+.optionId {
   font-size: 0.72rem;
   color: rgba(255, 255, 255, 0.5);
   white-space: nowrap;
 }
 
-/* ─── Type badge ─── */
-.typeBadge {
+/* ─── Geometry-type chip ─── */
+.geometryChip {
   display: inline-block;
   padding: 1px 6px;
   border-radius: 8px;
-  font-size: 0.68rem;
+  font-size: 0.66rem;
   font-weight: 700;
-  text-transform: uppercase;
   letter-spacing: 0.04em;
   color: #fff;
+  background: #455a64;
   white-space: nowrap;
 }
-
-.type_hurricane  { background: #1565c0; }
-.type_wildfire   { background: #bf360c; }
-.type_flood      { background: #01579b; }
-.type_earthquake { background: #4a148c; }
-.type_tornado    { background: #37474f; }
-.type_default    { background: #455a64; }

@@ -1,20 +1,21 @@
 import { useCallback, useMemo, useState } from 'react';
-import { useCrisisEventContext } from '../../contexts/CrisisEventContext';
+import { useIncidentContext } from '@contexts/IncidentContext';
 import { useLifelineStatuses } from '@hooks/useLifelineStatuses';
 import { mergeLifelineStatuses } from '@utils/mergeLifelineStatuses';
+import { DEFAULT_LIFELINES } from '@utils/defaultLifelines';
 import MobileHome from './MobileHome';
 import MobileLifelinePage from './MobileLifelinePage';
 import type { LifelineId } from '@types';
 import styles from './MobileShell.module.css';
 
 export default function MobileShell() {
-  const { activeEvent } = useCrisisEventContext();
+  const { activeIncident } = useIncidentContext();
   const { data: liveStatuses } = useLifelineStatuses();
   const [activeLifeline, setActiveLifeline] = useState<LifelineId | null>(null);
 
   const lifelines = useMemo(
-    () => mergeLifelineStatuses(activeEvent?.lifelines, liveStatuses),
-    [activeEvent, liveStatuses],
+    () => mergeLifelineStatuses(DEFAULT_LIFELINES, liveStatuses),
+    [liveStatuses],
   );
 
   const handleSelect = useCallback((id: LifelineId) => {
@@ -27,7 +28,7 @@ export default function MobileShell() {
 
   return (
     <div className={styles.shell}>
-      {activeLifeline === null || activeEvent === null || lifelines === null ? (
+      {activeLifeline === null || activeIncident === null || lifelines === null ? (
         <MobileHome lifelines={lifelines} onSelect={handleSelect} />
       ) : (
         <MobileLifelinePage
