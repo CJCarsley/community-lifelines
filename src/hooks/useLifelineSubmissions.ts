@@ -46,12 +46,13 @@ function featureToSubmission(feature: GraphicType): LifelineSubmission {
 
 export function useLifelineSubmissions(
   lifelineId: LifelineId | null,
+  incidentId: string | null,
 ): UseQueryResult<LifelineSubmission[], Error> {
   const { ref: viewRef, isReady } = useMapView();
   const { submissionsLayerId, mapVersion } = useMapConfig();
 
   return useQuery<LifelineSubmission[], Error>({
-    queryKey: ['lifelineSubmissions', mapVersion, submissionsLayerId, lifelineId],
+    queryKey: ['lifelineSubmissions', mapVersion, submissionsLayerId, lifelineId, incidentId],
     enabled: isReady && lifelineId !== null && submissionsLayerId !== null,
     staleTime: 30_000,
     queryFn: async () => {
@@ -63,8 +64,16 @@ export function useLifelineSubmissions(
       ) as FeatureLayerType | undefined;
       if (!layer) return [];
 
+      // Scope to the lifeline and (when an incident is selected) that incident —
+      // an incident has many submissions; leaves room for the field-user app.
+      const esc = (s: string) => s.replace(/'/g, "''");
+      const where =
+        incidentId !== null
+          ? `lifeline_id = '${esc(lifelineId)}' AND incidentid = '${esc(incidentId)}'`
+          : `lifeline_id = '${esc(lifelineId)}'`;
+
       const result = await layer.queryFeatures({
-        where: `lifeline_id = '${lifelineId.replace(/'/g, "''")}'`,
+        where,
         outFields: ['*'],
         orderByFields: ['submitted_at DESC'],
         returnGeometry: true,

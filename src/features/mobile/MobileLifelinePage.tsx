@@ -125,12 +125,11 @@ function StatusRadioOption({
 
   return (
     <span className={styles.segmentedOption}>
-      <input {...inputProps} ref={ref} className={styles.srOnly} />
       <label
-        htmlFor={inputProps.id}
         className={`${styles.segmentedLabel}${isSelected ? ` ${styles.segmentedLabelSelected}` : ''}`}
         style={isSelected ? { backgroundColor: color } : undefined}
       >
+        <input {...inputProps} ref={ref} className={styles.srOnly} />
         {label}
       </label>
     </span>
@@ -171,6 +170,7 @@ function BackButton({ onPress, label }: { onPress: () => void; label: string }) 
 export interface MobileLifelinePageProps {
   lifelineId: LifelineId;
   lifeline: Lifeline;
+  incidentId: string;
   onBack: () => void;
 }
 
@@ -185,6 +185,7 @@ export default function MobileLifelinePage(props: MobileLifelinePageProps) {
 function MobileLifelinePageBody({
   lifelineId,
   lifeline,
+  incidentId,
   onBack,
 }: MobileLifelinePageProps) {
   const { t } = useTranslation();
@@ -198,11 +199,13 @@ function MobileLifelinePageBody({
   localStatusRef.current = localStatus;
 
   const [notes, setNotes] = useState(lifeline.notes ?? '');
+  const notesRef = useRef(notes);
+  notesRef.current = notes;
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const [focusedSubmission, setFocusedSubmission] = useState<LifelineSubmission | null>(null);
 
-  const submissionsQuery = useLifelineSubmissions(lifelineId);
+  const submissionsQuery = useLifelineSubmissions(lifelineId, incidentId);
   const submissions = submissionsQuery.data ?? [];
 
   useEffect(() => {
@@ -219,9 +222,9 @@ function MobileLifelinePageBody({
   const handleStatusChange = useCallback(
     (status: LifelineStatus) => {
       setLocalStatus(status);
-      updateMutation.mutate({ lifelineId, status });
+      updateMutation.mutate({ incidentId, lifelineId, status, notes: notesRef.current });
     },
-    [lifelineId, updateMutation],
+    [incidentId, lifelineId, updateMutation],
   );
 
   const handleNotesChange = (value: string) => {
@@ -229,6 +232,7 @@ function MobileLifelinePageBody({
     if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
     saveTimerRef.current = setTimeout(() => {
       updateMutation.mutate({
+        incidentId,
         lifelineId,
         status: localStatusRef.current,
         notes: value,
