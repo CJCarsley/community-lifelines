@@ -8,6 +8,7 @@ import { Item, useListState } from 'react-stately';
 import type { ListState } from '@react-stately/list';
 import type { Key } from '@react-types/shared';
 import { useIncidentContext } from '@contexts/IncidentContext';
+import { useAuth } from '@hooks/useAuth';
 import type { IncidentRecord } from '@types';
 import styles from './IncidentSelector.module.css';
 
@@ -70,7 +71,9 @@ function IncidentOption({ item, state }: IncidentOptionProps) {
 
 export default function IncidentSelector() {
   const { t } = useTranslation();
-  const { incidents, activeIncident, setActiveIncidentId } = useIncidentContext();
+  const { incidents, activeIncident, setActiveIncidentId, setIsCreating } = useIncidentContext();
+  const { user } = useAuth();
+  const isAdmin = user !== null && user.roles.includes('Admin');
   const [isOpen, setIsOpen] = useState(false);
   const [overlayStyle, setOverlayStyle] = useState<React.CSSProperties>({});
 
@@ -95,7 +98,9 @@ export default function IncidentSelector() {
   const { buttonProps } = useButton(
     {
       onPress: isOpen ? close : open,
-      isDisabled: incidents.length === 0,
+      // Admins can always open the menu (to reach "Create New"); non-admins only
+      // when there's something to select.
+      isDisabled: incidents.length === 0 && !isAdmin,
       'aria-haspopup': 'listbox',
       'aria-expanded': isOpen,
     },
@@ -162,6 +167,22 @@ export default function IncidentSelector() {
                 />
               ))}
             </ul>
+            {isAdmin && (
+              <>
+                <div className={styles.menuDivider} role="separator" />
+                <button
+                  type="button"
+                  className={styles.createNew}
+                  onClick={() => {
+                    setIsCreating(true);
+                    close();
+                  }}
+                >
+                  <span className={styles.createPlus} aria-hidden="true">+</span>
+                  {t('incident.create.new')}
+                </button>
+              </>
+            )}
             <DismissButton onDismiss={close} />
           </div>
         </FocusScope>

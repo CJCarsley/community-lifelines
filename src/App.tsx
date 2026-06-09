@@ -1,6 +1,7 @@
 import React, { useCallback, useMemo, useState } from 'react';
 import MapView from '@features/map/MapView';
 import IncidentsLayer from '@features/incidents/IncidentsLayer';
+import IncidentCreateControl from '@features/incidents/IncidentCreateControl';
 import MapToolbar from '@features/map/MapToolbar';
 import LifelineDrawer from '@features/lifelines/LifelineDrawer';
 import LifelineStrip from '@features/lifelines/LifelineStrip';
@@ -171,6 +172,7 @@ export default function App({ signOut }: { signOut?: () => void }) {
                     incidentsVisible={incidentsVisible}
                     onToggleIncidents={() => setIncidentsVisible((v) => !v)}
                   />
+                  {isAdmin && <IncidentCreateControl />}
                 </MapView>
 
                 {isLifelineActive && activeIncident && lifelines && (
