@@ -22,7 +22,9 @@
     "mapLabel": "Map Overview",
     "lifelineRail": "Lifeline Navigation",
     "lifelines": "Lifelines",
-    "incidents": "Incidents"
+    "incidents": "Incidents",
+    "overview": "Overview",
+    "chat": "Chat"
   },
   "topBar": {
     "lastUpdated": "Updated {{time}}",

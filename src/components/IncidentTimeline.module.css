@@ -1,11 +1,17 @@
 .bar {
   display: flex;
   align-items: center;
-  gap: 12px;
+  flex-wrap: wrap;
+  gap: 8px 12px;
   padding: 8px 16px;
   background: #11233f;
   border-bottom: 1px solid rgba(255, 255, 255, 0.1);
   color: #fff;
+}
+
+/* Keep the slider usable when the bar wraps on narrow (mobile) widths. */
+.slider {
+  min-width: 140px;
 }
 
 .label {
