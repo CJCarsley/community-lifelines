@@ -159,6 +159,7 @@
     "placeholder": "Write a comment…",
     "send": "Send",
     "minimize": "Minimize chat",
+    "popOut": "Open in a new window",
     "export": "Export transcript (CSV)",
     "empty": "No comments yet. Start the conversation.",
     "edit": "Edit",

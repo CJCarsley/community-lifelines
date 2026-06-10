@@ -8,6 +8,8 @@ interface IncidentChatProps {
   // null = Live; a timestamp filters to messages posted at/before it.
   asOfMs: number | null;
   currentUserEmail: string | null;
+  // Renders full-viewport for the popped-out window (no dock/minimize/pop-out).
+  fullWindow?: boolean;
 }
 
 function fmtTime(iso?: string | null): string {
@@ -30,7 +32,12 @@ function toCsv(messages: ChatMessage[]): string {
   return rows.join('\n');
 }
 
-export default function IncidentChat({ incidentId, asOfMs, currentUserEmail }: IncidentChatProps) {
+export default function IncidentChat({
+  incidentId,
+  asOfMs,
+  currentUserEmail,
+  fullWindow = false,
+}: IncidentChatProps) {
   const { t } = useTranslation();
   const { messages, post, edit, remove } = useIncidentChat(incidentId);
 
@@ -70,7 +77,15 @@ export default function IncidentChat({ incidentId, asOfMs, currentUserEmail }: I
     URL.revokeObjectURL(url);
   };
 
-  if (minimized) {
+  const popOut = () => {
+    window.open(
+      `${window.location.pathname}?chat=${encodeURIComponent(incidentId)}`,
+      `incidentchat_${incidentId}`,
+      'popup,width=420,height=640',
+    );
+  };
+
+  if (!fullWindow && minimized) {
     return (
       <button type="button" className={styles.launcher} onClick={() => setMinimized(false)}>
         💬 {t('chat.title')}
@@ -80,7 +95,7 @@ export default function IncidentChat({ incidentId, asOfMs, currentUserEmail }: I
   }
 
   return (
-    <div className={styles.panel} role="region" aria-label={t('chat.title')}>
+    <div className={fullWindow ? styles.panelFull : styles.panel} role="region" aria-label={t('chat.title')}>
       <div className={styles.header}>
         <span className={styles.title}>{t('chat.title')}</span>
         <div className={styles.headerBtns}>
@@ -93,15 +108,28 @@ export default function IncidentChat({ incidentId, asOfMs, currentUserEmail }: I
           >
             ⤓
           </button>
-          <button
-            type="button"
-            className={styles.iconBtn}
-            onClick={() => setMinimized(true)}
-            aria-label={t('chat.minimize')}
-            title={t('chat.minimize')}
-          >
-            —
-          </button>
+          {!fullWindow && (
+            <>
+              <button
+                type="button"
+                className={styles.iconBtn}
+                onClick={popOut}
+                aria-label={t('chat.popOut')}
+                title={t('chat.popOut')}
+              >
+                ⧉
+              </button>
+              <button
+                type="button"
+                className={styles.iconBtn}
+                onClick={() => setMinimized(true)}
+                aria-label={t('chat.minimize')}
+                title={t('chat.minimize')}
+              >
+                —
+              </button>
+            </>
+          )}
         </div>
       </div>
 

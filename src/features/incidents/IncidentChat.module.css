@@ -34,6 +34,15 @@
   overflow: hidden;
 }
 
+.panelFull {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  background: #fff;
+  overflow: hidden;
+}
+
 .header {
   display: flex;
   align-items: center;
