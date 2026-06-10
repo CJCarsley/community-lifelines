@@ -9,14 +9,12 @@ import { seedLifelineStatus } from '@features/map/seedLifelineStatus';
 import {
   findIncidentSublayers,
   nextIncidentId,
-  SKETCH_TOOL,
   type IncidentGeometryKind,
 } from './incidentLayers';
+import { startIncidentSketch, type SketchSession } from './incidentSketch';
 import { useIncidentTypes, INCIDENT_TYPE_FIELD } from './useIncidentTypes';
 import IncidentTypePreview from './IncidentTypePreview';
 import type GeometryType from '@arcgis/core/geometry/Geometry';
-import type SketchViewModelType from '@arcgis/core/widgets/Sketch/SketchViewModel';
-import type GraphicsLayerType from '@arcgis/core/layers/GraphicsLayer';
 import styles from './IncidentCreateControl.module.css';
 
 type Mode = 'form' | 'sketching' | 'saving';
@@ -42,20 +40,12 @@ export default function IncidentCreateControl() {
     if (typeCode === null && types.length > 0) setTypeCode(types[0].code);
   }, [types, typeCode]);
 
-  const sketchRef = useRef<{ vm: SketchViewModelType; layer: GraphicsLayerType } | null>(null);
+  const sketchRef = useRef<SketchSession | null>(null);
 
   const cleanupSketch = useCallback(() => {
-    const s = sketchRef.current;
-    if (!s) return;
-    try {
-      s.vm.cancel();
-      s.vm.destroy();
-    } catch {
-      /* ignore teardown races */
-    }
-    viewRef.current?.map?.remove(s.layer);
+    sketchRef.current?.cancel();
     sketchRef.current = null;
-  }, [viewRef]);
+  }, []);
 
   // Tear down any in-progress sketch if the control unmounts (e.g. nav away).
   useEffect(() => cleanupSketch, [cleanupSketch]);
@@ -138,23 +128,7 @@ export default function IncidentCreateControl() {
     }
     setError(null);
     setMode('sketching');
-
-    const [{ default: SketchViewModel }, { default: GraphicsLayer }] = await Promise.all([
-      import('@arcgis/core/widgets/Sketch/SketchViewModel'),
-      import('@arcgis/core/layers/GraphicsLayer'),
-    ]);
-
-    const layer = new GraphicsLayer({ listMode: 'hide' });
-    view.map.add(layer);
-    const vm = new SketchViewModel({ view, layer });
-    sketchRef.current = { vm, layer };
-
-    vm.on('create', (event) => {
-      if (event.state === 'complete') void save(event.graphic.geometry ?? null);
-      // 'cancel' leaves the control in 'sketching'; the user can re-finish or
-      // press Cancel in the banner.
-    });
-    vm.create(SKETCH_TOOL[kind]);
+    sketchRef.current = await startIncidentSketch(view, kind, (geometry) => void save(geometry));
   }, [viewRef, name, kind, save, t]);
 
   if (!isReady || !isCreating) return null;

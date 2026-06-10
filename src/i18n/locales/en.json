@@ -58,6 +58,12 @@
       "saving": "Saving…",
       "error": "Could not create the incident. Check required fields and edit access.",
       "nameRequired": "Enter an incident name."
+    },
+    "add": {
+      "label": "Add to incident",
+      "hint": "Draw the {{type}} to add to “{{name}}”, then finish (double-click or Enter).",
+      "cancel": "Cancel",
+      "error": "Could not add the feature."
     }
   },
   "lifeline": {
