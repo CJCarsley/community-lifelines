@@ -2,6 +2,36 @@
 
 ---
 
+## 2026-06-08→10 — Incident-centric model + snapshot timeline + incident chat (shipped to prod)
+
+**Status: LIVE in prod** (merged to `main` via PRs #9–#14 + `feature/incident-chat`). Replaced the mock crisis-event model with real, incident-scoped data and added a history viewer and chat.
+
+**Web map layers** (same WebMap the app loads; all have a **string `incidentid`** field):
+- `Incidents` group `19e996b6448-layer-8` → `Areas 19e996b661f-layer-9`, `Lines 19e996b6621-layer-10`, `Points 19e996b6623-layer-11` (Emergency Information Manager solution). Also `incidentnm` (name) + `incidenttp` (type, coded-value domain on Points).
+- `lifeline_submissions 19e709aebf1-layer-2`, `lifeline_status 19e709ae8b2-layer-1` (loaded as a WebMap **table**).
+
+**What shipped:**
+- **lifeline_status → live tile colors**, now **per-incident + append-only (snapshots)**: every status change INSERTS a new timestamped row; current status = latest row per `(incidentid, lifeline_id)`; a row-less incident is seeded with 8 `unknown` rows on first selection/creation. (`useLifelineStatuses`, `useUpdateLifelineStatus`, `seedLifelineStatus`.)
+- **Incident selector** reads distinct incidents from the Incidents sublayers (`useIncidents`, `IncidentContext` replaced the mock `CrisisEvent*`).
+- **Admin incident creation** (selector → "＋ New Incident"): next `incidentid` = numeric max+1; geometry via `SketchViewModel`; **incident type** picked from the Points `incidenttp` coded-value domain with exact web-map symbols (`useIncidentTypes` + `symbolUtils.renderPreviewHTML`); seeds lifeline_status. (`IncidentCreateControl`, `incidentSketch.ts`.)
+- **Per-incident feature toolbar** (`IncidentFeatureToolbar`, top-center): add more geometry to the same `incidentid`. **Map filtering**: `IncidentsLayer` scopes Points/Lines/Areas + submissions to the selected incident via `definitionExpression`.
+- **Snapshot timeline** (`IncidentTimeline`, desktop "History" toggle): continuous time axis (first event → now), `datetime-local` jump + ‹ › 1-hour steps; `statusesAsOf` reconstructs whole-incident state; editing locked while viewing the past. Mobile unaffected.
+- **Incident chat** (`IncidentChat` + `useIncidentChat`, bottom-left): per-incident free-form comments, **Amplify Data `ChatMessage` model** (AppSync realtime `observeQuery`), minimize, **pop-out window** (`?chat=<id>` → `ChatWindow`, shares the same API so it auto-syncs), CSV export, History-slider filtering. Backend choice = Amplify Data (NOT AGE) for realtime + existing Cognito auth + clean separation from GIS.
+
+**GOTCHAS (durable — these cost real time):**
+- **Amplify owner-auth: `create` must be on `allow.owner()`, not `allow.authenticated()`.** Otherwise the implicit `owner` field is never populated, and owner-gated `update`/`delete` return **`Unauthorized`**. Pattern used: `allow.authenticated().to(['read'])` + `allow.owner().to(['create','read','update','delete'])`. (Messages created under the wrong rule stay permanently null-owner / undeletable.)
+- **A new Data model isn't testable on localhost until deployed.** `client.models.X` is `undefined` (white-screens if you call `.observeQuery` on it) until the model exists in the backend `amplify_outputs.json` points at. Deploy via `ampx sandbox` (rewrites `amplify_outputs.json` → restart `npm run dev`) or merge. Guard hooks against the model being undefined.
+- **`ampx sandbox` "Multiple sandbox instances detected"** has two causes: (a) genuinely two sandboxes running from different shells (check `Get-CimInstance Win32_Process` for `node.exe` with `ampx|sandbox` in CommandLine — different ParentProcessId = different shells), or (b) a **stale `.amplify/artifacts/cdk.out/read.<pid>.lock`** left by a force-killed CDK process. **Windows recycles PIDs** — a dead CDK PID had been reassigned to `chrome`, so an "is the PID alive?" check was fooled. Fix: kill all ampx/sandbox node procs, then delete `cdk.out\*.lock` (all stale when zero procs run), launch ONE. Don't relaunch while one is dying.
+- **react-aria `useRadio` emits no `id`** → `htmlFor={inputProps.id}` is undefined and clicking does nothing. Nest `<input>` INSIDE `<label>`. (Hit in both LifelineDrawer and MobileLifelinePage.)
+- **AGE editing via the app's service token works** once the registered OAuth app is granted edit in its **Privileges** section — `client_credentials` app tokens CAN edit user-owned hosted layers; no named-user/refresh-token needed. (Spent a while building a refresh-token path before finding this — reverted.)
+- **Dev server must be on `localhost:5173`** — the only localhost origin in the proxy `allowedOrigins`; other ports CORS-fail the WebMap.
+
+**Two terminals for local dev:** `npx ampx sandbox --profile dcgis-app-deployer` (backend, writes `amplify_outputs.json`) AND `npm run dev` (frontend, localhost:5173). `amplify_outputs.json` is gitignored.
+
+**Open follow-ups (none committed):** snapshot data accrues but a richer viewer could come later; orphaned pre-incident-scope `lifeline_status` rows + null-owner chat messages could use an admin cleanup; seed-on-select race could be hardened with an AGOL uniqueness constraint; the separate field-user submissions app.
+
+---
+
 ## 2026-06-04 — Shipped admin-settings to PRODUCTION (Amplify Hosting fullstack)
 
 **Status: LIVE in prod.** The Cognito + AppConfig + AGE-proxy feature (see 2026-06-02 entry) is merged to `main` and deployed. Production is served from the custom domain **https://eoc.dogis.org**. Verified end-to-end on prod: sign-in → Admin save persists (shared across browsers) → WebMap loads through the AGE proxy with no portal login.
