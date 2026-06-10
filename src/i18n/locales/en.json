@@ -162,6 +162,7 @@
     "popOut": "Open in a new window",
     "export": "Export transcript (CSV)",
     "empty": "No comments yet. Start the conversation.",
+    "unavailable": "Chat isn't available yet (backend not deployed for this environment).",
     "edit": "Edit",
     "delete": "Delete",
     "save": "Save",

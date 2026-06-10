@@ -19,25 +19,32 @@ export function useIncidentChat(incidentId: string | null) {
       setMessages([]);
       return;
     }
-    const sub = client.models.ChatMessage.observeQuery({
-      filter: { incidentId: { eq: incidentId } },
-    }).subscribe({
-      next: ({ items }) => {
-        const sorted = [...items].sort((a, b) =>
-          (a.createdAt ?? '').localeCompare(b.createdAt ?? ''),
-        );
-        setMessages(sorted);
-        setError(null);
-      },
-      error: (e: unknown) => setError(e instanceof Error ? e.message : 'chat error'),
-    });
+    // The model is absent until the ChatMessage backend is deployed — degrade
+    // gracefully instead of throwing (which would white-screen the app).
+    const model = client.models?.ChatMessage;
+    if (!model) {
+      setError('chat-unavailable');
+      return;
+    }
+    const sub = model
+      .observeQuery({ filter: { incidentId: { eq: incidentId } } })
+      .subscribe({
+        next: ({ items }) => {
+          const sorted = [...items].sort((a, b) =>
+            (a.createdAt ?? '').localeCompare(b.createdAt ?? ''),
+          );
+          setMessages(sorted);
+          setError(null);
+        },
+        error: (e: unknown) => setError(e instanceof Error ? e.message : 'chat error'),
+      });
     return () => sub.unsubscribe();
   }, [incidentId]);
 
   const post = useCallback(
     async (body: string) => {
       const text = body.trim();
-      if (!incidentId || text === '') return;
+      if (!incidentId || text === '' || !client.models?.ChatMessage) return;
       const session = await fetchAuthSession();
       const email = session.tokens?.idToken?.payload.email;
       await client.models.ChatMessage.create({
@@ -51,11 +58,12 @@ export function useIncidentChat(incidentId: string | null) {
 
   const edit = useCallback(async (id: string, body: string) => {
     const text = body.trim();
-    if (text === '') return;
+    if (text === '' || !client.models?.ChatMessage) return;
     await client.models.ChatMessage.update({ id, body: text });
   }, []);
 
   const remove = useCallback(async (id: string) => {
+    if (!client.models?.ChatMessage) return;
     await client.models.ChatMessage.delete({ id });
   }, []);
 

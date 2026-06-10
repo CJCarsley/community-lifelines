@@ -39,7 +39,8 @@ export default function IncidentChat({
   fullWindow = false,
 }: IncidentChatProps) {
   const { t } = useTranslation();
-  const { messages, post, edit, remove } = useIncidentChat(incidentId);
+  const { messages, error, post, edit, remove } = useIncidentChat(incidentId);
+  const unavailable = error === 'chat-unavailable';
 
   const [minimized, setMinimized] = useState(false);
   const [draft, setDraft] = useState('');
@@ -134,7 +135,9 @@ export default function IncidentChat({
       </div>
 
       <div className={styles.body} ref={listRef}>
-        {visible.length === 0 ? (
+        {unavailable ? (
+          <p className={styles.empty}>{t('chat.unavailable')}</p>
+        ) : visible.length === 0 ? (
           <p className={styles.empty}>{t('chat.empty')}</p>
         ) : (
           visible.map((m) => {
@@ -218,7 +221,7 @@ export default function IncidentChat({
           type="button"
           className={styles.sendBtn}
           onClick={send}
-          disabled={draft.trim() === ''}
+          disabled={draft.trim() === '' || unavailable}
         >
           {t('chat.send')}
         </button>
