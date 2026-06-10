@@ -3,6 +3,7 @@ import MapView from '@features/map/MapView';
 import IncidentsLayer from '@features/incidents/IncidentsLayer';
 import IncidentCreateControl from '@features/incidents/IncidentCreateControl';
 import IncidentFeatureToolbar from '@features/incidents/IncidentFeatureToolbar';
+import IncidentChat from '@features/incidents/IncidentChat';
 import MapToolbar from '@features/map/MapToolbar';
 import LifelineDrawer from '@features/lifelines/LifelineDrawer';
 import LifelineStrip from '@features/lifelines/LifelineStrip';
@@ -77,6 +78,12 @@ export default function App({ signOut }: { signOut?: () => void }) {
     historyOpen,
   );
   const viewingHistory = historyOpen && asOfMs !== null;
+  // Upper bound of the timeline (== Live). Recomputed when history opens / new
+  // rows arrive so the slider can always reach "now" (where recent chat lives).
+  const nowMs = useMemo(
+    () => Date.now(),
+    [historyOpen, historyTimestamps.length],
+  );
 
   // Reset the timeline whenever the active incident changes.
   useEffect(() => {
@@ -197,7 +204,8 @@ export default function App({ signOut }: { signOut?: () => void }) {
 
           {historyOpen && (
             <IncidentTimeline
-              timestamps={historyTimestamps}
+              minMs={historyTimestamps[0] ?? 0}
+              maxMs={nowMs}
               asOfMs={asOfMs}
               onChange={setAsOfMs}
               onClose={() => {
@@ -227,6 +235,13 @@ export default function App({ signOut }: { signOut?: () => void }) {
                   />
                   {isAdmin && <IncidentCreateControl />}
                   {isAdmin && <IncidentFeatureToolbar />}
+                  {activeIncident && (
+                    <IncidentChat
+                      incidentId={activeIncident.incidentId}
+                      asOfMs={viewingHistory ? asOfMs : null}
+                      currentUserEmail={user?.email ?? null}
+                    />
+                  )}
                 </MapView>
 
                 {isLifelineActive && activeIncident && lifelines && (

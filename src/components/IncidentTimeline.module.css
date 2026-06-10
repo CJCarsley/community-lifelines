@@ -40,6 +40,27 @@
   cursor: pointer;
 }
 
+.step {
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 5px;
+  color: #fff;
+  width: 26px;
+  height: 26px;
+  font-size: 1.1rem;
+  line-height: 1;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.step:hover {
+  background: rgba(255, 255, 255, 0.16);
+}
+
+.stampPast {
+  color: #fff;
+}
+
 .liveBtn {
   background: rgba(255, 255, 255, 0.08);
   color: rgba(255, 255, 255, 0.8);

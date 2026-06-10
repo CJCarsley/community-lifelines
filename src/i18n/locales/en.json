@@ -35,6 +35,8 @@
   "timeline": {
     "label": "Incident timeline",
     "jumpLabel": "Jump to time",
+    "prev": "Back 1 hour",
+    "next": "Forward 1 hour",
     "live": "Live",
     "empty": "No status history yet for this incident.",
     "readonlyHint": "Viewing a past snapshot — editing is disabled. Press “Live” to edit."
@@ -153,6 +155,22 @@
     "title": "Active Incidents",
     "noIncidents": "No active incidents",
     "impactZone": "Impact Zone"
+  },
+  "chat": {
+    "title": "Incident Chat",
+    "placeholder": "Write a comment…",
+    "send": "Send",
+    "minimize": "Minimize chat",
+    "popOut": "Open in a new window",
+    "export": "Export transcript (CSV)",
+    "empty": "No comments yet. Start the conversation.",
+    "unavailable": "Chat isn't available yet (backend not deployed for this environment).",
+    "edit": "Edit",
+    "delete": "Delete",
+    "save": "Save",
+    "cancel": "Cancel",
+    "edited": "edited",
+    "historyNote": "Viewing past messages (as of the selected time)."
   },
   "auth": {
     "signIn": "Sign In",

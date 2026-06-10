@@ -1,9 +1,9 @@
 .toolbar {
   position: absolute;
-  bottom: 16px;
+  top: 12px;
   left: 50%;
   transform: translateX(-50%);
-  z-index: 55;
+  z-index: 56;
   display: flex;
   align-items: center;
   gap: 8px;
@@ -51,7 +51,7 @@
 
 .banner {
   position: absolute;
-  bottom: 16px;
+  top: 12px;
   left: 50%;
   transform: translateX(-50%);
   z-index: 60;

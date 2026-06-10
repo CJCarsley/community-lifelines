@@ -1,8 +1,11 @@
 import { useTranslation } from 'react-i18next';
 import styles from './IncidentTimeline.module.css';
 
+const STEP_MS = 60 * 60 * 1000; // ‹ › step = 1 hour
+
 interface IncidentTimelineProps {
-  timestamps: number[];
+  minMs: number; // earliest event (slider start)
+  maxMs: number; // "now" (slider end == Live)
   // null = Live (current); otherwise the as-of timestamp being viewed.
   asOfMs: number | null;
   onChange: (ms: number | null) => void;
@@ -17,17 +20,26 @@ function toLocalInput(ms: number): string {
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
 }
 
+function fmt(ms: number): string {
+  return new Date(ms).toLocaleString('en-US', {
+    month: 'short',
+    day: 'numeric',
+    hour: 'numeric',
+    minute: '2-digit',
+  });
+}
+
 export default function IncidentTimeline({
-  timestamps,
+  minMs,
+  maxMs,
   asOfMs,
   onChange,
   onClose,
 }: IncidentTimelineProps) {
   const { t } = useTranslation();
-  const n = timestamps.length;
   const isLive = asOfMs === null;
 
-  if (n === 0) {
+  if (!Number.isFinite(minMs) || maxMs <= minMs) {
     return (
       <div className={styles.bar}>
         <span className={styles.empty}>{t('timeline.empty')}</span>
@@ -38,57 +50,57 @@ export default function IncidentTimeline({
     );
   }
 
-  const maxIdx = n - 1;
-  const first = timestamps[0];
-  const last = timestamps[maxIdx];
-  const currentMs = isLive ? last : asOfMs;
-  // Far-right of the slider == Live (and the latest snapshot).
-  const value = isLive ? maxIdx : Math.max(0, timestamps.indexOf(asOfMs));
+  // Live sits at the far-right (== now).
+  const current = isLive ? maxMs : Math.min(Math.max(asOfMs, minMs), maxMs);
 
-  // Map an arbitrary picked time to the snapshot in effect then (latest <= pick).
-  const snapTo = (pickedMs: number) => {
-    if (!Number.isFinite(pickedMs)) return;
-    if (pickedMs >= last) {
-      onChange(null);
-      return;
-    }
-    let snap = first;
-    for (const ts of timestamps) {
-      if (ts <= pickedMs) snap = ts;
-      else break;
-    }
-    onChange(snap);
+  const set = (ms: number) => {
+    if (ms >= maxMs) onChange(null);
+    else onChange(Math.max(minMs, ms));
   };
 
-  const onSlide = (idx: number) => {
-    if (idx >= maxIdx) onChange(null);
-    else onChange(timestamps[idx]);
-  };
+  // ‹ / › step back / forward 1 hour (set() clamps to [minMs] and snaps to Live
+  // once it reaches now).
+  const stepPrev = () => set(current - STEP_MS);
+  const stepNext = () => set(current + STEP_MS);
 
   return (
     <div className={styles.bar} role="group" aria-label={t('timeline.label')}>
       <span className={styles.label}>{t('timeline.label')}</span>
+
       <input
         type="datetime-local"
         className={styles.picker}
-        value={toLocalInput(currentMs)}
-        min={toLocalInput(first)}
-        max={toLocalInput(last)}
+        value={toLocalInput(current)}
+        min={toLocalInput(minMs)}
+        max={toLocalInput(maxMs)}
         step={1}
-        onChange={(e) => snapTo(new Date(e.target.value).getTime())}
+        onChange={(e) => {
+          const ms = new Date(e.target.value).getTime();
+          if (Number.isFinite(ms)) set(ms);
+        }}
         aria-label={t('timeline.jumpLabel')}
       />
-      {isLive && <span className={styles.stampLive}>{t('timeline.live')}</span>}
+
+      <button type="button" className={styles.step} onClick={stepPrev} aria-label={t('timeline.prev')}>
+        ‹
+      </button>
       <input
         type="range"
-        min={0}
-        max={maxIdx}
-        step={1}
-        value={value}
-        onChange={(e) => onSlide(Number(e.target.value))}
+        min={minMs}
+        max={maxMs}
+        step={1000}
+        value={current}
+        onChange={(e) => set(Number(e.target.value))}
         className={styles.slider}
         aria-label={t('timeline.label')}
       />
+      <button type="button" className={styles.step} onClick={stepNext} aria-label={t('timeline.next')}>
+        ›
+      </button>
+
+      <span className={`${styles.stampLive}${isLive ? '' : ` ${styles.stampPast}`}`}>
+        {isLive ? t('timeline.live') : fmt(current)}
+      </span>
       <button
         type="button"
         className={`${styles.liveBtn}${isLive ? ` ${styles.liveActive}` : ''}`}

@@ -22,6 +22,30 @@ const schema = a.schema({
       allow.authenticated().to(['read']),
       allow.group('Admin').to(['create', 'read', 'update', 'delete']),
     ]),
+
+  /**
+   * Incident chat — free-form comments, separate from the official
+   * lifeline_submissions. Realtime via AppSync subscriptions.
+   *
+   * Authorization:
+   *   - any signed-in user may READ + CREATE (post a comment)
+   *   - the author (owner) may additionally UPDATE/DELETE their own message
+   * `createdAt` (system field) drives ordering, the History-slider filter, and export.
+   */
+  ChatMessage: a
+    .model({
+      incidentId: a.string().required(),
+      body: a.string().required(),
+      author: a.string(), // email, for display/export (owner field drives authz)
+    })
+    .authorization((allow) => [
+      // Everyone signed in can read all messages…
+      allow.authenticated().to(['read']),
+      // …and any signed-in user can post (create), becoming the owner so they
+      // can edit/delete their own. (create MUST be on the owner rule, else the
+      // owner field is left null and update/delete return Unauthorized.)
+      allow.owner().to(['create', 'read', 'update', 'delete']),
+    ]),
 });
 
 export type Schema = ClientSchema<typeof schema>;
