@@ -18,6 +18,29 @@
   margin-bottom: 24px;
 }
 
+.headerRow {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.returnBtn {
+  flex-shrink: 0;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  border-radius: 6px;
+  color: #fff;
+  padding: 8px 14px;
+  font-size: 0.84rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.returnBtn:hover {
+  background: rgba(255, 255, 255, 0.16);
+}
+
 .heading {
   margin: 0 0 6px;
   font-size: 1.25rem;

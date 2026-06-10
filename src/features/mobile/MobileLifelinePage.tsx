@@ -8,7 +8,8 @@ import IncidentsLayer from '@features/incidents/IncidentsLayer';
 import { MapViewProvider, useMapView } from '@features/map/useMapView';
 import { useUpdateLifelineStatus } from '@hooks/useUpdateLifelineStatus';
 import { useLifelineSubmissions, type LifelineSubmission } from '@hooks/useLifelineSubmissions';
-import { useAuth, EDIT_ROLES } from '@hooks/useAuth';
+import { useAuth } from '@hooks/useAuth';
+import { useMyAssignedLifelines } from '@hooks/useLifelineAssignments';
 import type { Lifeline, LifelineId, LifelineStatus } from '@types';
 import styles from './MobileLifelinePage.module.css';
 
@@ -192,7 +193,9 @@ function MobileLifelinePageBody({
   const { user } = useAuth();
   const updateMutation = useUpdateLifelineStatus();
 
-  const canEdit = user !== null && user.roles.some((r) => EDIT_ROLES.includes(r));
+  const { assigned } = useMyAssignedLifelines();
+  const isAdmin = user !== null && user.roles.includes('Admin');
+  const canEdit = isAdmin || assigned.has(lifelineId);
 
   const [localStatus, setLocalStatus] = useState<LifelineStatus>(lifeline.status);
   const localStatusRef = useRef(localStatus);

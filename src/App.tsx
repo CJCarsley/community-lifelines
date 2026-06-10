@@ -218,7 +218,7 @@ export default function App({ signOut }: { signOut?: () => void }) {
           {/* ── Content area ── */}
           <main className={styles.content} role="tabpanel">
             {isAdminActive ? (
-              <AdminPage />
+              <AdminPage onReturnToMap={() => setActiveView('map')} />
             ) : (
               <MapViewProvider key={mapVersion}>
                 <MapView>

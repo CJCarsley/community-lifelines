@@ -5,7 +5,8 @@ import { useRadioGroupState } from '@react-stately/radio';
 import { useMapView } from '@features/map/useMapView';
 import { useUpdateLifelineStatus } from '@hooks/useUpdateLifelineStatus';
 import { useLifelineSubmissions, type LifelineSubmission } from '@hooks/useLifelineSubmissions';
-import { useAuth, EDIT_ROLES } from '@hooks/useAuth';
+import { useAuth } from '@hooks/useAuth';
+import { useMyAssignedLifelines } from '@hooks/useLifelineAssignments';
 import type { Lifeline, LifelineId, LifelineStatus } from '@types';
 import styles from './LifelineDrawer.module.css';
 
@@ -82,9 +83,11 @@ export default function LifelineDrawer({
   const { ref: viewRef } = useMapView();
   const updateMutation = useUpdateLifelineStatus();
 
-  // Editing is locked while viewing a past snapshot (read-only history).
-  const roleCanEdit = user !== null && user.roles.some((r) => EDIT_ROLES.includes(r));
-  const canEdit = roleCanEdit && !readOnly;
+  // Edit gate: assignment-based. A user may edit a lifeline iff it's assigned to
+  // them (Admins edit all). Locked while viewing a past snapshot (read-only).
+  const { assigned } = useMyAssignedLifelines();
+  const isAdmin = user !== null && user.roles.includes('Admin');
+  const canEdit = (isAdmin || assigned.has(lifelineId)) && !readOnly;
 
   const [localStatus, setLocalStatus] = useState<LifelineStatus>(lifeline.status);
   const localStatusRef = useRef(localStatus);
