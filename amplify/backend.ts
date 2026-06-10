@@ -5,13 +5,28 @@ import { auth } from './auth/resource';
 import { data } from './data/resource';
 import { ageToken } from './functions/age-token/resource';
 import { ageProxy } from './functions/age-proxy/resource';
+import { listUsers } from './functions/list-users/resource';
 
 const backend = defineBackend({
   auth,
   data,
   ageToken,
   ageProxy,
+  listUsers,
 });
+
+// ── list-users (Admin assignment UI) ──
+// Needs the pool id at runtime + permission to enumerate it.
+backend.listUsers.addEnvironment(
+  'USER_POOL_ID',
+  backend.auth.resources.userPool.userPoolId,
+);
+backend.listUsers.resources.lambda.addToRolePolicy(
+  new PolicyStatement({
+    actions: ['cognito-idp:ListUsers'],
+    resources: [backend.auth.resources.userPool.userPoolArn],
+  }),
+);
 
 // Req 6: GetSecretValue on the specific secret ARN only. Nothing else.
 backend.ageToken.resources.lambda.addToRolePolicy(

@@ -196,6 +196,19 @@
     "verifyLayerMissing": "Web Map loaded, but no layer titled 'lifeline_submissions' was found.",
     "verifyTableMissing": "Web Map loaded, but no table titled 'lifeline_status' was found.",
     "saved": "Saved",
-    "saveError": "Could not save. You may not have Admin permission."
+    "saveError": "Could not save. You may not have Admin permission.",
+    "returnToMap": "Return to Map",
+    "assign": {
+      "heading": "User Lifeline Assignments",
+      "subheading": "Assign each user the lifeline(s) whose status they may update. Everyone can view all lifelines; only assigned users (and Admins) can edit.",
+      "loading": "Loading users…",
+      "loadError": "Could not load users.",
+      "colUser": "User",
+      "colLifelines": "Assigned lifelines",
+      "none": "None",
+      "dialogTitle": "Assign lifelines — {{name}}",
+      "saving": "Saving…",
+      "error": "Could not save assignment."
+    }
   }
 }

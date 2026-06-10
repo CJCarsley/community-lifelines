@@ -4,6 +4,7 @@ import { useButton } from '@react-aria/button';
 import { useMapConfig, type ResolvedLayerIds } from '@contexts/MapConfigContext';
 import { useAuth } from '@hooks/useAuth';
 import { installArcgisProxy } from '@features/map/arcgisProxy';
+import UserAssignments from './UserAssignments';
 import styles from './AdminPage.module.css';
 
 const PORTAL_URL_INPUT_ID = 'admin-portal-url';
@@ -41,7 +42,7 @@ function ActionButton({ onPress, isDisabled, label, variant }: ActionButtonProps
   );
 }
 
-export default function AdminPage() {
+export default function AdminPage({ onReturnToMap }: { onReturnToMap: () => void }) {
   const { t } = useTranslation();
   const { user } = useAuth();
   const { portalUrl, webMapId, setMapConfig } = useMapConfig();
@@ -138,9 +139,14 @@ export default function AdminPage() {
   return (
     <section className={styles.page} aria-labelledby="admin-heading">
       <header className={styles.header}>
-        <h1 id="admin-heading" className={styles.heading}>
-          {t('admin.heading')}
-        </h1>
+        <div className={styles.headerRow}>
+          <h1 id="admin-heading" className={styles.heading}>
+            {t('admin.heading')}
+          </h1>
+          <button type="button" className={styles.returnBtn} onClick={onReturnToMap}>
+            {t('admin.returnToMap')}
+          </button>
+        </div>
         <p className={styles.subheading}>{t('admin.subheading')}</p>
       </header>
 
@@ -242,6 +248,8 @@ export default function AdminPage() {
           </p>
         )}
       </div>
+
+      <UserAssignments />
     </section>
   );
 }

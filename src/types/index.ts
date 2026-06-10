@@ -69,6 +69,7 @@ export type UserRole = 'Admin' | 'Editor' | 'Viewer' | 'LifelineManager';
 // - Federated (Okta) users: roles injected by Pre-Token Generation Lambda
 // Components never need to know which path was used.
 export interface AuthUser {
+  sub: string; // stable Cognito id — keys lifeline assignments
   username: string;
   email: string;
   roles: UserRole[];

@@ -15,6 +15,7 @@ async function loadUser(): Promise<AuthUser | null> {
     if (!idToken) return null;
     const payload = idToken.payload;
 
+    const sub = typeof payload.sub === 'string' ? payload.sub : '';
     const email = typeof payload.email === 'string' ? payload.email : '';
     const rawGroups = payload['cognito:groups'];
     const groups = Array.isArray(rawGroups) ? (rawGroups as string[]) : [];
@@ -27,6 +28,7 @@ async function loadUser(): Promise<AuthUser | null> {
         : email;
 
     return {
+      sub,
       username,
       email,
       roles,

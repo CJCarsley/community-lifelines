@@ -1,4 +1,5 @@
 import { type ClientSchema, a, defineData } from '@aws-amplify/backend';
+import { listUsers } from '../functions/list-users/resource';
 
 /**
  * App-wide configuration, persisted server-side so it is shared across every
@@ -46,6 +47,39 @@ const schema = a.schema({
       // owner field is left null and update/delete return Unauthorized.)
       allow.owner().to(['create', 'read', 'update', 'delete']),
     ]),
+
+  /**
+   * Per-user lifeline assignments. A user may edit the status of only the
+   * lifelines assigned to them (gate is client-side; Admins edit all).
+   * Keyed by the Cognito `sub` (stable). Everyone reads (each user reads their
+   * own for the gate; admins read all); only Admins write.
+   */
+  LifelineAssignment: a
+    .model({
+      userSub: a.string().required(),
+      email: a.string(),
+      lifelines: a.string().array(),
+    })
+    .identifier(['userSub'])
+    .authorization((allow) => [
+      allow.authenticated().to(['read']),
+      allow.group('Admin').to(['create', 'read', 'update', 'delete']),
+    ]),
+
+  // Shape returned by the listAppUsers query.
+  AppUser: a.customType({
+    sub: a.string(),
+    email: a.string(),
+    username: a.string(),
+    status: a.string(),
+  }),
+
+  // Admin-only: enumerate Cognito users for the assignment UI.
+  listAppUsers: a
+    .query()
+    .returns(a.ref('AppUser').array())
+    .authorization((allow) => [allow.group('Admin')])
+    .handler(a.handler.function(listUsers)),
 });
 
 export type Schema = ClientSchema<typeof schema>;
