@@ -154,6 +154,20 @@
     "noIncidents": "No active incidents",
     "impactZone": "Impact Zone"
   },
+  "chat": {
+    "title": "Incident Chat",
+    "placeholder": "Write a comment…",
+    "send": "Send",
+    "minimize": "Minimize chat",
+    "export": "Export transcript (CSV)",
+    "empty": "No comments yet. Start the conversation.",
+    "edit": "Edit",
+    "delete": "Delete",
+    "save": "Save",
+    "cancel": "Cancel",
+    "edited": "edited",
+    "historyNote": "Viewing past messages (as of the selected time)."
+  },
   "auth": {
     "signIn": "Sign In",
     "signOut": "Sign Out",

@@ -3,6 +3,7 @@ import MapView from '@features/map/MapView';
 import IncidentsLayer from '@features/incidents/IncidentsLayer';
 import IncidentCreateControl from '@features/incidents/IncidentCreateControl';
 import IncidentFeatureToolbar from '@features/incidents/IncidentFeatureToolbar';
+import IncidentChat from '@features/incidents/IncidentChat';
 import MapToolbar from '@features/map/MapToolbar';
 import LifelineDrawer from '@features/lifelines/LifelineDrawer';
 import LifelineStrip from '@features/lifelines/LifelineStrip';
@@ -227,6 +228,13 @@ export default function App({ signOut }: { signOut?: () => void }) {
                   />
                   {isAdmin && <IncidentCreateControl />}
                   {isAdmin && <IncidentFeatureToolbar />}
+                  {activeIncident && (
+                    <IncidentChat
+                      incidentId={activeIncident.incidentId}
+                      asOfMs={viewingHistory ? asOfMs : null}
+                      currentUserEmail={user?.email ?? null}
+                    />
+                  )}
                 </MapView>
 
                 {isLifelineActive && activeIncident && lifelines && (

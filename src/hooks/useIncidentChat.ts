@@ -1,0 +1,63 @@
+import { useCallback, useEffect, useState } from 'react';
+import { generateClient } from 'aws-amplify/data';
+import { fetchAuthSession } from 'aws-amplify/auth';
+import type { Schema } from '../../amplify/data/resource';
+
+const client = generateClient<Schema>();
+
+export type ChatMessage = Schema['ChatMessage']['type'];
+
+// Realtime incident chat backed by Amplify Data (AppSync subscriptions).
+// observeQuery keeps `messages` live as anyone posts/edits/deletes — including
+// across pop-out windows, since they subscribe to the same API.
+export function useIncidentChat(incidentId: string | null) {
+  const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!incidentId) {
+      setMessages([]);
+      return;
+    }
+    const sub = client.models.ChatMessage.observeQuery({
+      filter: { incidentId: { eq: incidentId } },
+    }).subscribe({
+      next: ({ items }) => {
+        const sorted = [...items].sort((a, b) =>
+          (a.createdAt ?? '').localeCompare(b.createdAt ?? ''),
+        );
+        setMessages(sorted);
+        setError(null);
+      },
+      error: (e: unknown) => setError(e instanceof Error ? e.message : 'chat error'),
+    });
+    return () => sub.unsubscribe();
+  }, [incidentId]);
+
+  const post = useCallback(
+    async (body: string) => {
+      const text = body.trim();
+      if (!incidentId || text === '') return;
+      const session = await fetchAuthSession();
+      const email = session.tokens?.idToken?.payload.email;
+      await client.models.ChatMessage.create({
+        incidentId,
+        body: text,
+        author: typeof email === 'string' ? email : undefined,
+      });
+    },
+    [incidentId],
+  );
+
+  const edit = useCallback(async (id: string, body: string) => {
+    const text = body.trim();
+    if (text === '') return;
+    await client.models.ChatMessage.update({ id, body: text });
+  }, []);
+
+  const remove = useCallback(async (id: string) => {
+    await client.models.ChatMessage.delete({ id });
+  }, []);
+
+  return { messages, error, post, edit, remove };
+}
