@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import MapView from '@features/map/MapView';
 import IncidentsLayer from '@features/incidents/IncidentsLayer';
 import IncidentCreateControl from '@features/incidents/IncidentCreateControl';
@@ -8,12 +8,14 @@ import LifelineDrawer from '@features/lifelines/LifelineDrawer';
 import LifelineStrip from '@features/lifelines/LifelineStrip';
 import AdminPage from '@features/admin/AdminPage';
 import IncidentSelector from '@components/IncidentSelector';
+import IncidentTimeline from '@components/IncidentTimeline';
 import MobileShell from '@features/mobile/MobileShell';
 import { MapViewProvider } from '@features/map/useMapView';
 import { useIsMobile } from '@hooks/useIsMobile';
 import { useAuth } from '@hooks/useAuth';
 import { useMapConfig } from '@contexts/MapConfigContext';
 import { useLifelineStatuses } from '@hooks/useLifelineStatuses';
+import { useIncidentHistory, statusesAsOf } from '@hooks/useIncidentHistory';
 import { mergeLifelineStatuses } from '@utils/mergeLifelineStatuses';
 import { DEFAULT_LIFELINES } from '@utils/defaultLifelines';
 import { useIncidentContext } from '@contexts/IncidentContext';
@@ -64,14 +66,41 @@ export default function App({ signOut }: { signOut?: () => void }) {
   const [incidentsVisible, setIncidentsVisible] = useState(true);
 
   const { activeIncident } = useIncidentContext();
-  const { data: liveStatuses } = useLifelineStatuses(activeIncident?.incidentId ?? null);
+  const incidentId = activeIncident?.incidentId ?? null;
+  const { data: liveStatuses } = useLifelineStatuses(incidentId);
 
-  // Live lifeline_status rows overlay the default (all-unknown) base. Drives the
-  // strip tiles, drawer, and event-severity badge.
-  const lifelines = useMemo(
-    () => mergeLifelineStatuses(DEFAULT_LIFELINES, liveStatuses),
-    [liveStatuses],
+  // Snapshot timeline: hidden by default; asOfMs null = Live (current).
+  const [historyOpen, setHistoryOpen] = useState(false);
+  const [asOfMs, setAsOfMs] = useState<number | null>(null);
+  const { rows: historyRows, timestamps: historyTimestamps } = useIncidentHistory(
+    incidentId,
+    historyOpen,
   );
+  const viewingHistory = historyOpen && asOfMs !== null;
+
+  // Reset the timeline whenever the active incident changes.
+  useEffect(() => {
+    setHistoryOpen(false);
+    setAsOfMs(null);
+  }, [incidentId]);
+
+  // Live rows (or the as-of snapshot when scrubbing) overlay the default
+  // all-unknown base. Drives the strip tiles, drawer, and severity badge.
+  const effectiveStatuses = useMemo(
+    () => (viewingHistory ? statusesAsOf(historyRows, asOfMs as number) : liveStatuses),
+    [viewingHistory, historyRows, asOfMs, liveStatuses],
+  );
+  const lifelines = useMemo(
+    () => mergeLifelineStatuses(DEFAULT_LIFELINES, effectiveStatuses),
+    [effectiveStatuses],
+  );
+
+  const handleToggleHistory = useCallback(() => {
+    setHistoryOpen((open) => {
+      if (open) setAsOfMs(null);
+      return !open;
+    });
+  }, []);
 
   const eventSeverity = useMemo<EventSeverity | null>(() => {
     if (!lifelines) return null;
@@ -126,6 +155,16 @@ export default function App({ signOut }: { signOut?: () => void }) {
         </div>
 
         <div className={styles.topBarRight}>
+          {!isMobile && activeIncident && (
+            <button
+              type="button"
+              className={`${styles.adminBtn}${historyOpen ? ` ${styles.adminBtnActive}` : ''}`}
+              aria-pressed={historyOpen}
+              onClick={handleToggleHistory}
+            >
+              {t('topBar.history')}
+            </button>
+          )}
           {showAdminNav && (
             <button
               type="button"
@@ -156,6 +195,18 @@ export default function App({ signOut }: { signOut?: () => void }) {
             buttonRefs={lifelineButtonRefs}
           />
 
+          {historyOpen && (
+            <IncidentTimeline
+              timestamps={historyTimestamps}
+              asOfMs={asOfMs}
+              onChange={setAsOfMs}
+              onClose={() => {
+                setHistoryOpen(false);
+                setAsOfMs(null);
+              }}
+            />
+          )}
+
           {/* ── Content area ── */}
           <main className={styles.content} role="tabpanel">
             {isAdminActive ? (
@@ -184,6 +235,7 @@ export default function App({ signOut }: { signOut?: () => void }) {
                     lifelineId={mapActiveView}
                     lifeline={lifelines[mapActiveView]}
                     incidentId={activeIncident.incidentId}
+                    readOnly={viewingHistory}
                     onClose={handleDrawerClose}
                   />
                 )}

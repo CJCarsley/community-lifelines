@@ -66,6 +66,7 @@ export interface LifelineDrawerProps {
   lifelineId: LifelineId;
   lifeline: Lifeline;
   incidentId: string;
+  readOnly?: boolean;
   onClose: () => void;
 }
 
@@ -73,6 +74,7 @@ export default function LifelineDrawer({
   lifelineId,
   lifeline,
   incidentId,
+  readOnly = false,
   onClose,
 }: LifelineDrawerProps) {
   const { t } = useTranslation();
@@ -80,7 +82,9 @@ export default function LifelineDrawer({
   const { ref: viewRef } = useMapView();
   const updateMutation = useUpdateLifelineStatus();
 
-  const canEdit = user !== null && user.roles.some((r) => EDIT_ROLES.includes(r));
+  // Editing is locked while viewing a past snapshot (read-only history).
+  const roleCanEdit = user !== null && user.roles.some((r) => EDIT_ROLES.includes(r));
+  const canEdit = roleCanEdit && !readOnly;
 
   const [localStatus, setLocalStatus] = useState<LifelineStatus>(lifeline.status);
   const localStatusRef = useRef(localStatus);
@@ -90,6 +94,15 @@ export default function LifelineDrawer({
   const notesRef = useRef(notes);
   notesRef.current = notes;
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // While scrubbing history (read-only), the drawer stays mounted as the as-of
+  // status changes — sync the displayed values from props.
+  useEffect(() => {
+    if (readOnly) {
+      setLocalStatus(lifeline.status);
+      setNotes(lifeline.notes ?? '');
+    }
+  }, [readOnly, lifeline.status, lifeline.notes]);
 
   const submissionsQuery = useLifelineSubmissions(lifelineId, incidentId);
   const submissions = submissionsQuery.data ?? [];
@@ -196,6 +209,10 @@ export default function LifelineDrawer({
 
       {/* ── Body ── */}
       <div className={styles.body}>
+
+        {readOnly && (
+          <p className={styles.readonlyHint}>{t('timeline.readonlyHint')}</p>
+        )}
 
         {/* Status change control */}
         {canEdit && (
