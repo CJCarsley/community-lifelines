@@ -284,7 +284,7 @@ function MobileLifelinePageBody({
       {/* ── Map slot (small, fixed) ── */}
       <div className={styles.mapSlot}>
         <MapView>
-          <IncidentsLayer activeView={lifelineId} visible />
+          <IncidentsLayer activeView={lifelineId} incidentId={incidentId} visible />
           <ZoomToSubmissions submissions={submissions} focused={focusedSubmission} />
         </MapView>
       </div>

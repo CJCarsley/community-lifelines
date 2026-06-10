@@ -166,6 +166,7 @@ export default function App({ signOut }: { signOut?: () => void }) {
                   {activeIncident && (
                     <IncidentsLayer
                       activeView={mapActiveView}
+                      incidentId={activeIncident.incidentId}
                       visible={incidentsVisible}
                     />
                   )}
