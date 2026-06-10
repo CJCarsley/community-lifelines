@@ -34,6 +34,7 @@
   },
   "timeline": {
     "label": "Incident timeline",
+    "jumpLabel": "Jump to time",
     "live": "Live",
     "empty": "No status history yet for this incident.",
     "readonlyHint": "Viewing a past snapshot — editing is disabled. Press “Live” to edit."

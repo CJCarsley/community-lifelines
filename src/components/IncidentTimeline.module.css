@@ -16,16 +16,22 @@
   white-space: nowrap;
 }
 
-.stamp {
-  font-size: 0.84rem;
-  font-weight: 600;
+.picker {
+  color-scheme: dark;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  border-radius: 5px;
+  color: #fff;
+  padding: 4px 8px;
+  font-size: 0.82rem;
   font-variant-numeric: tabular-nums;
-  min-width: 132px;
-  white-space: nowrap;
 }
 
 .stampLive {
   color: #6ee7a8;
+  font-size: 0.78rem;
+  font-weight: 700;
+  white-space: nowrap;
 }
 
 .slider {

@@ -9,13 +9,12 @@ interface IncidentTimelineProps {
   onClose: () => void;
 }
 
-function fmt(ms: number): string {
-  return new Date(ms).toLocaleString('en-US', {
-    month: 'short',
-    day: 'numeric',
-    hour: 'numeric',
-    minute: '2-digit',
-  });
+const pad = (n: number) => String(n).padStart(2, '0');
+
+// Epoch ms -> "YYYY-MM-DDTHH:mm:ss" in local time (datetime-local format).
+function toLocalInput(ms: number): string {
+  const d = new Date(ms);
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
 }
 
 export default function IncidentTimeline({
@@ -40,8 +39,26 @@ export default function IncidentTimeline({
   }
 
   const maxIdx = n - 1;
+  const first = timestamps[0];
+  const last = timestamps[maxIdx];
+  const currentMs = isLive ? last : asOfMs;
   // Far-right of the slider == Live (and the latest snapshot).
   const value = isLive ? maxIdx : Math.max(0, timestamps.indexOf(asOfMs));
+
+  // Map an arbitrary picked time to the snapshot in effect then (latest <= pick).
+  const snapTo = (pickedMs: number) => {
+    if (!Number.isFinite(pickedMs)) return;
+    if (pickedMs >= last) {
+      onChange(null);
+      return;
+    }
+    let snap = first;
+    for (const ts of timestamps) {
+      if (ts <= pickedMs) snap = ts;
+      else break;
+    }
+    onChange(snap);
+  };
 
   const onSlide = (idx: number) => {
     if (idx >= maxIdx) onChange(null);
@@ -51,9 +68,17 @@ export default function IncidentTimeline({
   return (
     <div className={styles.bar} role="group" aria-label={t('timeline.label')}>
       <span className={styles.label}>{t('timeline.label')}</span>
-      <span className={`${styles.stamp}${isLive ? ` ${styles.stampLive}` : ''}`}>
-        {isLive ? t('timeline.live') : fmt(timestamps[value])}
-      </span>
+      <input
+        type="datetime-local"
+        className={styles.picker}
+        value={toLocalInput(currentMs)}
+        min={toLocalInput(first)}
+        max={toLocalInput(last)}
+        step={1}
+        onChange={(e) => snapTo(new Date(e.target.value).getTime())}
+        aria-label={t('timeline.jumpLabel')}
+      />
+      {isLive && <span className={styles.stampLive}>{t('timeline.live')}</span>}
       <input
         type="range"
         min={0}
@@ -63,7 +88,6 @@ export default function IncidentTimeline({
         onChange={(e) => onSlide(Number(e.target.value))}
         className={styles.slider}
         aria-label={t('timeline.label')}
-        aria-valuetext={isLive ? t('timeline.live') : fmt(timestamps[value])}
       />
       <button
         type="button"
