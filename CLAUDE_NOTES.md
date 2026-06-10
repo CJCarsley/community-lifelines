@@ -2,6 +2,27 @@
 
 ---
 
+## 2026-06-10 — Admin per-user lifeline assignments + Return-to-Map (shipped to prod)
+
+**Status: LIVE in prod** (PR #16, merge `b0f44726`). Admins assign each user the lifeline(s) whose status they may edit; the edit gate is now **assignment-based** (Admins edit all), replacing the static `EDIT_ROLES` gate. Everyone still SEES everything.
+
+**Backend (`amplify/`):**
+- **`LifelineAssignment` model** (`data/resource.ts`): `identifier(['userSub'])` (Cognito `sub`), fields `email`, `lifelines: string[]`. Auth `authenticated().to(['read'])` + `group('Admin')` writes. Realtime via `observeQuery`.
+- **`functions/list-users/`** Lambda → Cognito `ListUsers`, exposed as the **Admin-only `listAppUsers`** custom query (`a.query().returns(a.ref('AppUser').array()).handler(a.handler.function(listUsers))`, `AppUser` `customType`). `backend.ts` registers the function in `defineBackend`, `addEnvironment('USER_POOL_ID', …userPool.userPoolId)`, and `addToRolePolicy` for `cognito-idp:ListUsers` on `…userPool.userPoolArn`. Added `@aws-sdk/client-cognito-identity-provider`.
+
+**Frontend (`src/`):** hooks `useAppUsers` (the query), `useLifelineAssignments` (live `Map<sub,assignment>` + upsert), `useMyAssignedLifelines` (current user's live set → gate). `features/admin/UserAssignments.tsx` (user table + per-lifeline checkbox modal, dark-themed) on `AdminPage`. Edit gate in `LifelineDrawer` + `MobileLifelinePage`: `canEdit = isAdmin || assigned.has(lifelineId)`. `useAuth`/`AuthUser` gained `sub`. Return-to-Map button (`App` passes `setActiveView('map')`).
+
+**Decisions / limitations:**
+- **Client-side gating only.** The status write still goes through the service-account proxy, which *can* edit any lifeline — a hand-crafted request bypasses the UI gate. Acceptable for an internal authenticated tool; **server-side enforcement (proxy validates the caller's assignments) is the defined follow-up** if needed.
+- **Assignment is the gate; Admins edit all.** `Editor`/`LifelineManager` groups no longer gate status editing (the `EDIT_ROLES` export remains in `useAuth.ts` but is unused as a gate).
+
+**Gotchas / ops:**
+- **Custom query + function:** the handler function must be both referenced in the schema (`a.handler.function(listUsers)`) AND passed to `defineBackend` so `backend.listUsers` is available to wire env + IAM. Handler typed via `Schema['listAppUsers']['functionHandler']`.
+- **New model + function ⇒ backend deploy** before the UI works (sandbox rewrites `amplify_outputs.json`; restart `npm run dev`).
+- **Post-deploy:** existing prod users have **no assignments** → non-admins can view but not edit until an admin assigns them lifelines (Admins always edit all). First prod deploy creates the `list-users` Lambda + role.
+
+---
+
 ## 2026-06-08→10 — Incident-centric model + snapshot timeline + incident chat (shipped to prod)
 
 **Status: LIVE in prod** (merged to `main` via PRs #9–#14 + `feature/incident-chat`). Replaced the mock crisis-event model with real, incident-scoped data and added a history viewer and chat.
