@@ -78,6 +78,12 @@ export default function App({ signOut }: { signOut?: () => void }) {
     historyOpen,
   );
   const viewingHistory = historyOpen && asOfMs !== null;
+  // Upper bound of the timeline (== Live). Recomputed when history opens / new
+  // rows arrive so the slider can always reach "now" (where recent chat lives).
+  const nowMs = useMemo(
+    () => Date.now(),
+    [historyOpen, historyTimestamps.length],
+  );
 
   // Reset the timeline whenever the active incident changes.
   useEffect(() => {
@@ -198,7 +204,9 @@ export default function App({ signOut }: { signOut?: () => void }) {
 
           {historyOpen && (
             <IncidentTimeline
-              timestamps={historyTimestamps}
+              minMs={historyTimestamps[0] ?? 0}
+              maxMs={nowMs}
+              markers={historyTimestamps}
               asOfMs={asOfMs}
               onChange={setAsOfMs}
               onClose={() => {

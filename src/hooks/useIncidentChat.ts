@@ -59,12 +59,18 @@ export function useIncidentChat(incidentId: string | null) {
   const edit = useCallback(async (id: string, body: string) => {
     const text = body.trim();
     if (text === '' || !client.models?.ChatMessage) return;
-    await client.models.ChatMessage.update({ id, body: text });
+    const { errors } = await client.models.ChatMessage.update({ id, body: text });
+    if (errors?.length) console.error('[chat] edit failed:', errors);
   }, []);
 
   const remove = useCallback(async (id: string) => {
     if (!client.models?.ChatMessage) return;
-    await client.models.ChatMessage.delete({ id });
+    try {
+      const { errors } = await client.models.ChatMessage.delete({ id });
+      if (errors?.length) console.error('[chat] delete failed:', errors);
+    } catch (e) {
+      console.error('[chat] delete threw:', e);
+    }
   }, []);
 
   return { messages, error, post, edit, remove };
