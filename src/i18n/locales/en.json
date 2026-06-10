@@ -35,8 +35,8 @@
   "timeline": {
     "label": "Incident timeline",
     "jumpLabel": "Jump to time",
-    "prev": "Previous change",
-    "next": "Next change",
+    "prev": "Back 1 hour",
+    "next": "Forward 1 hour",
     "live": "Live",
     "empty": "No status history yet for this incident.",
     "readonlyHint": "Viewing a past snapshot — editing is disabled. Press “Live” to edit."

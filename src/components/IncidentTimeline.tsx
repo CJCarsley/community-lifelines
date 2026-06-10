@@ -1,10 +1,11 @@
 import { useTranslation } from 'react-i18next';
 import styles from './IncidentTimeline.module.css';
 
+const STEP_MS = 60 * 60 * 1000; // ‹ › step = 1 hour
+
 interface IncidentTimelineProps {
   minMs: number; // earliest event (slider start)
   maxMs: number; // "now" (slider end == Live)
-  markers: number[]; // event timestamps for the ‹ › step buttons (sorted asc)
   // null = Live (current); otherwise the as-of timestamp being viewed.
   asOfMs: number | null;
   onChange: (ms: number | null) => void;
@@ -31,7 +32,6 @@ function fmt(ms: number): string {
 export default function IncidentTimeline({
   minMs,
   maxMs,
-  markers,
   asOfMs,
   onChange,
   onClose,
@@ -58,15 +58,10 @@ export default function IncidentTimeline({
     else onChange(Math.max(minMs, ms));
   };
 
-  // ‹ / › step to the previous / next event marker (a moment something changed).
-  const stepPrev = () => {
-    const prev = markers.filter((m) => m < current).pop();
-    onChange(prev ?? minMs);
-  };
-  const stepNext = () => {
-    const next = markers.find((m) => m > current);
-    onChange(next ?? null); // past the last marker → Live
-  };
+  // ‹ / › step back / forward 1 hour (set() clamps to [minMs] and snaps to Live
+  // once it reaches now).
+  const stepPrev = () => set(current - STEP_MS);
+  const stepNext = () => set(current + STEP_MS);
 
   return (
     <div className={styles.bar} role="group" aria-label={t('timeline.label')}>

@@ -206,7 +206,6 @@ export default function App({ signOut }: { signOut?: () => void }) {
             <IncidentTimeline
               minMs={historyTimestamps[0] ?? 0}
               maxMs={nowMs}
-              markers={historyTimestamps}
               asOfMs={asOfMs}
               onChange={setAsOfMs}
               onClose={() => {

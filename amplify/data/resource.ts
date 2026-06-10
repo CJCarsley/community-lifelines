@@ -39,8 +39,12 @@ const schema = a.schema({
       author: a.string(), // email, for display/export (owner field drives authz)
     })
     .authorization((allow) => [
-      allow.authenticated().to(['read', 'create']),
-      allow.owner().to(['read', 'update', 'delete']),
+      // Everyone signed in can read all messages…
+      allow.authenticated().to(['read']),
+      // …and any signed-in user can post (create), becoming the owner so they
+      // can edit/delete their own. (create MUST be on the owner rule, else the
+      // owner field is left null and update/delete return Unauthorized.)
+      allow.owner().to(['create', 'read', 'update', 'delete']),
     ]),
 });
 
