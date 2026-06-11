@@ -162,7 +162,7 @@ export default function App({ signOut }: { signOut?: () => void }) {
         </div>
 
         <div className={styles.topBarRight}>
-          {!isMobile && activeIncident && (
+          {activeIncident && (
             <button
               type="button"
               className={`${styles.adminBtn}${historyOpen ? ` ${styles.adminBtnActive}` : ''}`}
@@ -189,8 +189,25 @@ export default function App({ signOut }: { signOut?: () => void }) {
       </header>
 
       {isMobile ? (
-        /* ── Mobile: home grid → lifeline detail page ── */
-        <MobileShell />
+        /* ── Mobile: tabbed shell (overview / map / chat / admin) ── */
+        <MobileShell
+          lifelines={lifelines}
+          activeIncident={activeIncident}
+          isAdmin={isAdmin}
+          userEmail={user?.email ?? null}
+          history={{
+            open: historyOpen,
+            asOfMs,
+            viewingHistory,
+            timestamps: historyTimestamps,
+            nowMs,
+            onChange: setAsOfMs,
+            onClose: () => {
+              setHistoryOpen(false);
+              setAsOfMs(null);
+            },
+          }}
+        />
       ) : (
         <>
           {/* ── Lifeline graphic strip ── */}

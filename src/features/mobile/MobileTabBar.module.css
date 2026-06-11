@@ -1,0 +1,35 @@
+.bar {
+  display: flex;
+  flex-shrink: 0;
+  background: #0e1c33;
+  border-top: 1px solid rgba(255, 255, 255, 0.12);
+  padding-bottom: env(safe-area-inset-bottom);
+}
+
+.tab {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  background: none;
+  border: none;
+  color: rgba(255, 255, 255, 0.6);
+  padding: 8px 4px 6px;
+  cursor: pointer;
+  font: inherit;
+}
+
+.tab:active {
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.tabActive {
+  color: #7fc4ff;
+}
+
+.label {
+  font-size: 0.66rem;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+}

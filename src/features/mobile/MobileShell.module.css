@@ -1,6 +1,31 @@
 .shell {
   height: 100%;
   width: 100%;
+  display: flex;
+  flex-direction: column;
   overflow: hidden;
   position: relative;
+}
+
+.timelineRow {
+  flex-shrink: 0;
+}
+
+.content {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.overviewScroll {
+  height: 100%;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.chatFill {
+  position: relative;
+  height: 100%;
+  width: 100%;
 }

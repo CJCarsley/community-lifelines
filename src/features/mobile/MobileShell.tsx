@@ -1,44 +1,98 @@
-import { useCallback, useMemo, useState } from 'react';
-import { useIncidentContext } from '@contexts/IncidentContext';
-import { useLifelineStatuses } from '@hooks/useLifelineStatuses';
-import { mergeLifelineStatuses } from '@utils/mergeLifelineStatuses';
-import { DEFAULT_LIFELINES } from '@utils/defaultLifelines';
+import { useCallback, useState } from 'react';
 import MobileHome from './MobileHome';
 import MobileLifelinePage from './MobileLifelinePage';
-import type { LifelineId } from '@types';
+import MobileMapTab from './MobileMapTab';
+import MobileTabBar, { type MobileTab } from './MobileTabBar';
+import IncidentChat from '@features/incidents/IncidentChat';
+import IncidentTimeline from '@components/IncidentTimeline';
+import AdminPage from '@features/admin/AdminPage';
+import type { IncidentRecord, Lifeline, LifelineId } from '@types';
 import styles from './MobileShell.module.css';
 
-export default function MobileShell() {
-  const { activeIncident } = useIncidentContext();
-  const { data: liveStatuses } = useLifelineStatuses(activeIncident?.incidentId ?? null);
+interface MobileShellProps {
+  lifelines: Record<LifelineId, Lifeline> | null;
+  activeIncident: IncidentRecord | null;
+  isAdmin: boolean;
+  userEmail: string | null;
+  history: {
+    open: boolean;
+    asOfMs: number | null;
+    viewingHistory: boolean;
+    timestamps: number[];
+    nowMs: number;
+    onChange: (ms: number | null) => void;
+    onClose: () => void;
+  };
+}
+
+export default function MobileShell({
+  lifelines,
+  activeIncident,
+  isAdmin,
+  userEmail,
+  history,
+}: MobileShellProps) {
+  const [tab, setTab] = useState<MobileTab>('overview');
   const [activeLifeline, setActiveLifeline] = useState<LifelineId | null>(null);
 
-  const lifelines = useMemo(
-    () => mergeLifelineStatuses(DEFAULT_LIFELINES, liveStatuses),
-    [liveStatuses],
-  );
+  const effectiveTab: MobileTab = tab === 'admin' && !isAdmin ? 'overview' : tab;
 
-  const handleSelect = useCallback((id: LifelineId) => {
-    setActiveLifeline(id);
-  }, []);
-
-  const handleBack = useCallback(() => {
+  const changeTab = useCallback((next: MobileTab) => {
     setActiveLifeline(null);
+    setTab(next);
   }, []);
 
   return (
     <div className={styles.shell}>
-      {activeLifeline === null || activeIncident === null || lifelines === null ? (
-        <MobileHome lifelines={lifelines} onSelect={handleSelect} />
-      ) : (
-        <MobileLifelinePage
-          key={activeLifeline}
-          lifelineId={activeLifeline}
-          lifeline={lifelines[activeLifeline]}
-          incidentId={activeIncident.incidentId}
-          onBack={handleBack}
-        />
+      {history.open && (
+        <div className={styles.timelineRow}>
+          <IncidentTimeline
+            minMs={history.timestamps[0] ?? 0}
+            maxMs={history.nowMs}
+            asOfMs={history.asOfMs}
+            onChange={history.onChange}
+            onClose={history.onClose}
+          />
+        </div>
       )}
+
+      <div className={styles.content}>
+        {effectiveTab === 'overview' &&
+          (activeLifeline !== null && activeIncident !== null && lifelines !== null ? (
+            <MobileLifelinePage
+              key={activeLifeline}
+              lifelineId={activeLifeline}
+              lifeline={lifelines[activeLifeline]}
+              incidentId={activeIncident.incidentId}
+              onBack={() => setActiveLifeline(null)}
+            />
+          ) : (
+            <div className={styles.overviewScroll}>
+              <MobileHome lifelines={lifelines} onSelect={setActiveLifeline} />
+            </div>
+          ))}
+
+        {effectiveTab === 'map' && (
+          <MobileMapTab activeIncident={activeIncident} isAdmin={isAdmin} />
+        )}
+
+        {effectiveTab === 'chat' && activeIncident !== null && (
+          <div className={styles.chatFill}>
+            <IncidentChat
+              incidentId={activeIncident.incidentId}
+              asOfMs={history.viewingHistory ? history.asOfMs : null}
+              currentUserEmail={userEmail}
+              fullWindow
+            />
+          </div>
+        )}
+
+        {effectiveTab === 'admin' && isAdmin && (
+          <AdminPage onReturnToMap={() => changeTab('map')} />
+        )}
+      </div>
+
+      <MobileTabBar tab={effectiveTab} isAdmin={isAdmin} onChange={changeTab} />
     </div>
   );
 }
