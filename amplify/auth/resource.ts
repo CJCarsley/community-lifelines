@@ -1,4 +1,4 @@
-import { defineAuth } from '@aws-amplify/backend';
+import { defineAuth, secret } from '@aws-amplify/backend';
 
 /**
  * Cognito user pool.
@@ -19,24 +19,44 @@ import { defineAuth } from '@aws-amplify/backend';
  */
 export const auth = defineAuth({
   loginWith: {
+    // Native email/password stays on as break-glass alongside Okta SSO.
     email: true,
 
-    // ── Okta (Phase B) — uncomment and fill in when the IdP is ready ──
-    // externalProviders: {
-    //   oidc: [
-    //     {
-    //       name: 'Okta',
-    //       clientId: secret('OKTA_CLIENT_ID'),
-    //       clientSecret: secret('OKTA_CLIENT_SECRET'),
-    //       issuerUrl: 'https://<your-org>.okta.com',
-    //       scopes: ['openid', 'email', 'profile'],
-    //       attributeMapping: { email: 'email' },
-    //     },
-    //   ],
-    //   // Reuse these exact URLs for native + federated sign-in.
-    //   callbackUrls: ['http://localhost:5173/', 'https://<deployed-app-url>/'],
-    //   logoutUrls: ['http://localhost:5173/', 'https://<deployed-app-url>/'],
-    // },
+    // ── Okta OIDC (dotcomm.okta.com app "Emergency Management") ──
+    // Cognito stays the broker: it federates to Okta, app keeps reading the
+    // same Cognito token/groups. Amplify types clientId AND clientSecret as
+    // BackendSecret, so both go through `ampx ... secret set` (the client id
+    // 0oa246ahcmcAv5WS61d8 isn't sensitive, but the type requires a secret ref).
+    externalProviders: {
+      oidc: [
+        {
+          name: 'Okta', // referenced by signInWithRedirect({ provider: { custom: 'Okta' } })
+          clientId: secret('OKTA_CLIENT_ID'),
+          clientSecret: secret('OKTA_CLIENT_SECRET'),
+          // Org auth server. If JWT validation fails, switch to the custom
+          // auth server: 'https://dotcomm.okta.com/oauth2/default'.
+          issuerUrl: 'https://dotcomm.okta.com',
+          scopes: ['openid', 'email', 'profile'],
+          attributeMapping: { email: 'email' },
+        },
+      ],
+      // NOTE: the Hosted-UI domain prefix is NOT settable here — defineAuth
+      // omits `domainPrefix` from its factory props. It's overridden on the
+      // auto-created UserPoolDomain via the CDK escape hatch in backend.ts.
+
+      // Same list every env (shared code). Each env's pool uses the one that
+      // matches its app origin; extras are harmless.
+      callbackUrls: [
+        'http://localhost:5173/',
+        'https://eoc.dogis.org/',
+        'https://main.d3qicauq9rd01b.amplifyapp.com/',
+      ],
+      logoutUrls: [
+        'http://localhost:5173/',
+        'https://eoc.dogis.org/',
+        'https://main.d3qicauq9rd01b.amplifyapp.com/',
+      ],
+    },
   },
 
   // Roles. Keep these names STABLE — Okta group/attribute mapping targets them.
