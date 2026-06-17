@@ -3,6 +3,7 @@ import React from 'react';
 import ReactDOM from 'react-dom/client';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { Authenticator } from '@aws-amplify/ui-react';
+import { signInWithRedirect } from 'aws-amplify/auth';
 import '@aws-amplify/ui-react/styles.css';
 import './amplifyConfig'; // side-effect: Amplify.configure
 import { IncidentProvider } from './contexts/IncidentContext';
@@ -32,7 +33,29 @@ ReactDOM.createRoot(rootElement).render(
   <StrictMode>
     <QueryClientProvider client={queryClient}>
       {/* hideSignUp: accounts are admin-provisioned (Cognito console), not self-serve */}
-      <Authenticator hideSignUp>
+      {/* SignIn.Footer adds Okta SSO below the native email/password (break-glass) form */}
+      <Authenticator
+        hideSignUp
+        components={{
+          SignIn: {
+            Footer() {
+              return (
+                <div style={{ padding: '0 1rem 1rem', textAlign: 'center' }}>
+                  <button
+                    type="button"
+                    onClick={() =>
+                      void signInWithRedirect({ provider: { custom: 'Okta' } })
+                    }
+                    style={{ width: '100%', padding: '0.5rem', cursor: 'pointer' }}
+                  >
+                    Sign in with Okta
+                  </button>
+                </div>
+              );
+            },
+          },
+        }}
+      >
         {({ signOut }) =>
           chatIncidentId ? (
             <ChatWindow incidentId={chatIncidentId} />

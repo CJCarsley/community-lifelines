@@ -1,6 +1,7 @@
 import { defineBackend } from '@aws-amplify/backend';
 import { PolicyStatement } from 'aws-cdk-lib/aws-iam';
 import { FunctionUrlAuthType, HttpMethod } from 'aws-cdk-lib/aws-lambda';
+import { CfnUserPoolDomain } from 'aws-cdk-lib/aws-cognito';
 import { auth } from './auth/resource';
 import { data } from './data/resource';
 import { ageToken } from './functions/age-token/resource';
@@ -14,6 +15,36 @@ const backend = defineBackend({
   ageProxy,
   listUsers,
 });
+
+// ── Okta SSO: pin the Cognito Hosted-UI domain prefix ──
+// defineAuth auto-creates ONE UserPoolDomain when externalProviders is set but
+// gives it a generated prefix and exposes no way to set it (domainPrefix is
+// Omit'd from the factory props, and the domain isn't in cfnResources). So find
+// the generated CfnUserPoolDomain in the tree and override its prefix.
+// Prefix is GLOBALLY unique + this is shared code, so derive per env:
+//   prod (main)   -> 'dcgis-eoc'      (registered in Okta)
+//   local sandbox -> 'dcgis-eoc-dev'  (registered in Okta; AWS_BRANCH unset)
+//   any preview   -> 'dcgis-eoc-<branch>' (unique, avoids colliding with the
+//                    sandbox/other previews; NOT registered in Okta, so only
+//                    native login works on previews — Okta is tested on prod).
+//   https://<prefix>.auth.us-west-2.amazoncognito.com/oauth2/idpresponse
+const branch = process.env.AWS_BRANCH;
+const hostedUiPrefix = !branch
+  ? 'dcgis-eoc-dev'
+  : branch === 'main'
+    ? 'dcgis-eoc'
+    : `dcgis-eoc-${branch
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, '-')
+        .replace(/^-+|-+$/g, '')
+        .slice(0, 40)}`;
+const cfnUserPoolDomain = backend.auth.resources.userPool.node
+  .findAll()
+  .find((c): c is CfnUserPoolDomain => c instanceof CfnUserPoolDomain);
+if (!cfnUserPoolDomain) {
+  throw new Error('Okta: could not find the generated CfnUserPoolDomain to set its prefix');
+}
+cfnUserPoolDomain.domain = hostedUiPrefix;
 
 // ── list-users (Admin assignment UI) ──
 // Needs the pool id at runtime + permission to enumerate it.
