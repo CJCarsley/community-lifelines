@@ -2,6 +2,36 @@
 
 ---
 
+## 2026-06-24 — Decouple community lifelines from incidents (IN PROGRESS, not committed)
+
+**Status: code complete on branch `feature/community-lifelines`, typechecks clean (`tsc -b` exit 0), NOT committed/pushed, NOT yet sandbox-tested.** Per the EOC manager: Community Lifelines are **per-community, not per-incident**. The "Live" lifeline status is now the same no matter which incident is selected; incidents only **window the history view** via their dates.
+
+**Model change (no ArcGIS schema edit, no Amplify/backend change — all frontend + ArcGIS data):**
+- **Reserved sentinel** `COMMUNITY_KEY = '__community__'` (in `features/map/statusTable.ts`). ALL community `lifeline_status` rows read/write under `incidentid = '__community__'`. Legacy per-incident rows are simply ignored ("start fresh" decision — left in place, unused).
+- **`lifeline_status` reads/writes** (`useLifelineStatuses`, `useUpdateLifelineStatus`, `useIncidentHistory`→renamed export **`useCommunityHistory`**, `seedLifelineStatus`): all dropped the `incidentId` param and now filter/insert the sentinel. Seed-8-unknowns happens ONCE for the community (first load with no community rows), not per incident. `useUpdateLifelineStatus` also invalidates `['lifelineStatusHistory']`.
+
+**Incident dates (read-only, from existing ArcGIS fields the user added/used):**
+- `reptime` (Report Time) = **start**; `incidentended` = **end** (non-null ⇒ ENDED). Both date fields on all 3 Incidents sublayers. Constants `INCIDENT_START_FIELD`/`INCIDENT_END_FIELD` in `incidentLayers.ts`.
+- `useIncidents` now reads both, merges per `incidentid` (min start, max end), returns ISO `startDate`/`endDate` on `IncidentRecord` (no more `returnDistinctValues` — needs per-feature dates). `IncidentCreateControl` writes `reptime = now` on create; **no longer seeds lifeline_status** (community-wide now).
+
+**History windowing + Live gating (`App.tsx` + `IncidentTimeline` + mobile):**
+- Active/no incident: Live enabled; slider `[start (or earliest row), now]`.
+- **Ended incident:** Live **disabled**, view forced to read-only history; slider clamped to `[start, end]`, default at `end`; History toggle hidden; timeline can't be closed (only view). `IncidentTimeline` gained `liveDisabled` prop (hides Live/✕ buttons, clamps into window instead of snapping to Live).
+- **Lifelines viewable with NO incident selected** (community-independent): drawer/mobile lifeline page render even when `activeIncident` is null; `incidentId` is now `string | null` and used ONLY to scope the submissions list. Edit gate extended with `&& !readOnly` (ended/past = read-only) in both `LifelineDrawer` and `MobileLifelinePage`.
+
+**Decisions (confirmed with user):** existing data = start fresh (ignore old per-incident rows); ended = read-only history; lifelines visible with no incident; dates from existing ArcGIS fields (no new edit UI).
+
+**LEFT TO DO:**
+1. **Sandbox test** (`ampx sandbox` not needed — no backend change; just `npm run dev`): verify Live is incident-independent; create/select active vs ended incident; ended → Live off + slider clamped `[start,end]` + read-only; no-incident → lifelines still editable (if assigned).
+2. **Confirm the `__community__` seed** path on a table that already has legacy rows (the empty-check is on community rows only, so it should seed even when legacy incident rows exist — verify).
+3. Commit → branch already exists (`feature/community-lifelines`) → PR → merge → prod (frontend-only deploy).
+4. Optional: admin cleanup of orphaned legacy per-incident `lifeline_status` rows (cosmetic).
+5. **Watch:** `reptime`/`incidentended` field names + epoch-ms assumption against the live service (date fields return ms; `toMsOrNull` tolerates string/empty).
+
+**Untracked:** `apps/` (companion scaffold) remains uncommitted from earlier — unrelated to this work.
+
+---
+
 ## 2026-06-10 — Admin per-user lifeline assignments + Return-to-Map (shipped to prod)
 
 **Status: LIVE in prod** (PR #16, merge `b0f44726`). Admins assign each user the lifeline(s) whose status they may edit; the edit gate is now **assignment-based** (Admins edit all), replacing the static `EDIT_ROLES` gate. Everyone still SEES everything.

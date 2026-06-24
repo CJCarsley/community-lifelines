@@ -16,7 +16,7 @@ import { useIsMobile } from '@hooks/useIsMobile';
 import { useAuth } from '@hooks/useAuth';
 import { useMapConfig } from '@contexts/MapConfigContext';
 import { useLifelineStatuses } from '@hooks/useLifelineStatuses';
-import { useIncidentHistory, statusesAsOf } from '@hooks/useIncidentHistory';
+import { useCommunityHistory, statusesAsOf } from '@hooks/useIncidentHistory';
 import { mergeLifelineStatuses } from '@utils/mergeLifelineStatuses';
 import { DEFAULT_LIFELINES } from '@utils/defaultLifelines';
 import { useIncidentContext } from '@contexts/IncidentContext';
@@ -67,35 +67,58 @@ export default function App({ signOut }: { signOut?: () => void }) {
   const [incidentsVisible, setIncidentsVisible] = useState(true);
 
   const { activeIncident } = useIncidentContext();
-  const incidentId = activeIncident?.incidentId ?? null;
-  const { data: liveStatuses } = useLifelineStatuses(incidentId);
+  // Lifeline status is COMMUNITY-wide — independent of which incident is selected.
+  const { data: liveStatuses } = useLifelineStatuses();
+
+  // The incident only WINDOWS the history view. An ended incident (endDate set)
+  // disables Live and clamps the slider to [start, end], read-only.
+  const incidentStartMs = activeIncident?.startDate
+    ? Date.parse(activeIncident.startDate)
+    : null;
+  const incidentEndMs = activeIncident?.endDate
+    ? Date.parse(activeIncident.endDate)
+    : null;
+  const isEnded = incidentEndMs !== null;
 
   // Snapshot timeline: hidden by default; asOfMs null = Live (current).
   const [historyOpen, setHistoryOpen] = useState(false);
   const [asOfMs, setAsOfMs] = useState<number | null>(null);
-  const { rows: historyRows, timestamps: historyTimestamps } = useIncidentHistory(
-    incidentId,
-    historyOpen,
-  );
-  const viewingHistory = historyOpen && asOfMs !== null;
-  // Upper bound of the timeline (== Live). Recomputed when history opens / new
-  // rows arrive so the slider can always reach "now" (where recent chat lives).
+
+  // History rows load when the user opens history OR an ended incident forces it.
+  const historyActive = historyOpen || isEnded;
+  const { rows: historyRows, timestamps: historyTimestamps } =
+    useCommunityHistory(historyActive);
+
   const nowMs = useMemo(
     () => Date.now(),
-    [historyOpen, historyTimestamps.length],
+    [historyActive, historyTimestamps.length],
   );
+
+  // Slider bounds: lower = incident start (else earliest row); upper = the
+  // incident end when ended, otherwise "now" (== Live).
+  const timelineMin = incidentStartMs ?? historyTimestamps[0] ?? 0;
+  const timelineMax = isEnded ? (incidentEndMs as number) : nowMs;
 
   // Reset the timeline whenever the active incident changes.
   useEffect(() => {
     setHistoryOpen(false);
     setAsOfMs(null);
-  }, [incidentId]);
+  }, [activeIncident?.incidentId]);
 
-  // Live rows (or the as-of snapshot when scrubbing) overlay the default
+  // Ended ⇒ always viewing history (read-only), defaulting to the end time.
+  // Active ⇒ viewing history only while actively scrubbing (asOfMs set).
+  const effectiveAsOf = isEnded ? (asOfMs ?? timelineMax) : asOfMs;
+  const viewingHistory = isEnded || (historyOpen && asOfMs !== null);
+  const showTimeline = historyOpen || isEnded;
+
+  // Live rows (or the as-of snapshot when scrubbing/ended) overlay the default
   // all-unknown base. Drives the strip tiles, drawer, and severity badge.
   const effectiveStatuses = useMemo(
-    () => (viewingHistory ? statusesAsOf(historyRows, asOfMs as number) : liveStatuses),
-    [viewingHistory, historyRows, asOfMs, liveStatuses],
+    () =>
+      viewingHistory
+        ? statusesAsOf(historyRows, effectiveAsOf as number)
+        : liveStatuses,
+    [viewingHistory, historyRows, effectiveAsOf, liveStatuses],
   );
   const lifelines = useMemo(
     () => mergeLifelineStatuses(DEFAULT_LIFELINES, effectiveStatuses),
@@ -162,7 +185,8 @@ export default function App({ signOut }: { signOut?: () => void }) {
         </div>
 
         <div className={styles.topBarRight}>
-          {activeIncident && (
+          {/* Ended incidents force the (read-only) timeline, so no toggle then. */}
+          {!isEnded && (
             <button
               type="button"
               className={`${styles.adminBtn}${historyOpen ? ` ${styles.adminBtnActive}` : ''}`}
@@ -196,11 +220,12 @@ export default function App({ signOut }: { signOut?: () => void }) {
           isAdmin={isAdmin}
           userEmail={user?.email ?? null}
           history={{
-            open: historyOpen,
+            open: showTimeline,
             asOfMs,
             viewingHistory,
-            timestamps: historyTimestamps,
-            nowMs,
+            minMs: timelineMin,
+            maxMs: timelineMax,
+            liveDisabled: isEnded,
             onChange: setAsOfMs,
             onClose: () => {
               setHistoryOpen(false);
@@ -219,11 +244,12 @@ export default function App({ signOut }: { signOut?: () => void }) {
             buttonRefs={lifelineButtonRefs}
           />
 
-          {historyOpen && (
+          {showTimeline && (
             <IncidentTimeline
-              minMs={historyTimestamps[0] ?? 0}
-              maxMs={nowMs}
+              minMs={timelineMin}
+              maxMs={timelineMax}
               asOfMs={asOfMs}
+              liveDisabled={isEnded}
               onChange={setAsOfMs}
               onClose={() => {
                 setHistoryOpen(false);
@@ -261,12 +287,13 @@ export default function App({ signOut }: { signOut?: () => void }) {
                   )}
                 </MapView>
 
-                {isLifelineActive && activeIncident && lifelines && (
+                {/* Lifelines are community-wide → drawer shows even with no incident. */}
+                {isLifelineActive && lifelines && (
                   <LifelineDrawer
                     key={mapActiveView}
                     lifelineId={mapActiveView}
                     lifeline={lifelines[mapActiveView]}
-                    incidentId={activeIncident.incidentId}
+                    incidentId={activeIncident?.incidentId ?? null}
                     readOnly={viewingHistory}
                     onClose={handleDrawerClose}
                   />

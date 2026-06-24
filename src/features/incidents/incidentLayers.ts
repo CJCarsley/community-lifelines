@@ -16,6 +16,10 @@ export type IncidentSublayers = Record<IncidentGeometryKind, FeatureLayerType | 
 
 export const INCIDENT_ID_FIELD = 'incidentid';
 export const INCIDENT_NAME_FIELD = 'incidentnm';
+// Date fields (epoch ms). reptime = Report Time (start); incidentended = end
+// (non-null ⇒ the incident has ended). Present on all three geometry sublayers.
+export const INCIDENT_START_FIELD = 'reptime';
+export const INCIDENT_END_FIELD = 'incidentended';
 
 // Accepts a loaded WebMap or a MapView's map (both expose `allLayers`).
 type LayerContainer = Pick<WebMapType, 'allLayers'>;

@@ -1,6 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { useMapConfig } from '@contexts/MapConfigContext';
-import { loadStatusTable } from '@features/map/statusTable';
+import { loadStatusTable, COMMUNITY_KEY } from '@features/map/statusTable';
 import { LIFELINE_IDS } from '@utils/defaultLifelines';
 import { toIsoOrNull, toStringOrNull } from '@utils/arcgisAttrs';
 import type { LifelineStatusMap } from '@hooks/useLifelineStatuses';
@@ -35,22 +35,23 @@ function toStatus(v: unknown): LifelineStatus {
     : 'unknown';
 }
 
-// All lifeline_status rows for an incident (the full append-only snapshot
-// history), ascending by time. Gated by `enabled` so it only fetches when the
-// timeline is open.
-export function useIncidentHistory(incidentId: string | null, enabled: boolean) {
+// All COMMUNITY lifeline_status rows (the full append-only snapshot history),
+// ascending by time. Gated by `enabled` so it only fetches when the timeline is
+// open (or an ended incident forces history). Windowing to an incident's
+// [start, end] is applied by the consumer (the timeline slider bounds).
+export function useCommunityHistory(enabled: boolean) {
   const { portalUrl, webMapId, statusTableId, mapVersion } = useMapConfig();
 
   const query = useQuery<StatusHistoryRow[], Error>({
-    queryKey: ['lifelineStatusHistory', mapVersion, webMapId, statusTableId, incidentId],
-    enabled: enabled && webMapId !== '' && incidentId !== null,
+    queryKey: ['lifelineStatusHistory', mapVersion, webMapId, statusTableId],
+    enabled: enabled && webMapId !== '',
     staleTime: 30_000,
     queryFn: async () => {
       const table = await loadStatusTable(portalUrl, webMapId, statusTableId);
-      if (!table || !incidentId) return [];
+      if (!table) return [];
 
       const result = await table.queryFeatures({
-        where: `incidentid = '${incidentId.replace(/'/g, "''")}'`,
+        where: `incidentid = '${COMMUNITY_KEY}'`,
         outFields: ['*'],
         orderByFields: ['status_updated_at ASC'],
         returnGeometry: false,

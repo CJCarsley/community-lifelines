@@ -5,9 +5,12 @@ const STEP_MS = 60 * 60 * 1000; // ‹ › step = 1 hour
 
 interface IncidentTimelineProps {
   minMs: number; // earliest event (slider start)
-  maxMs: number; // "now" (slider end == Live)
+  maxMs: number; // slider end — "now" (== Live), or the incident end when ended
   // null = Live (current); otherwise the as-of timestamp being viewed.
   asOfMs: number | null;
+  // Ended incident: no Live, read-only history clamped to [minMs, maxMs]. The
+  // timeline can't be closed (it's the only view) and null asOf shows the end.
+  liveDisabled?: boolean;
   onChange: (ms: number | null) => void;
   onClose: () => void;
 }
@@ -33,29 +36,36 @@ export default function IncidentTimeline({
   minMs,
   maxMs,
   asOfMs,
+  liveDisabled = false,
   onChange,
   onClose,
 }: IncidentTimelineProps) {
   const { t } = useTranslation();
-  const isLive = asOfMs === null;
+  // When Live is disabled (ended incident), a null asOf means "the end time".
+  const isLive = !liveDisabled && asOfMs === null;
 
   if (!Number.isFinite(minMs) || maxMs <= minMs) {
     return (
       <div className={styles.bar}>
         <span className={styles.empty}>{t('timeline.empty')}</span>
-        <button type="button" className={styles.close} aria-label={t('common.close')} onClick={onClose}>
-          ✕
-        </button>
+        {!liveDisabled && (
+          <button type="button" className={styles.close} aria-label={t('common.close')} onClick={onClose}>
+            ✕
+          </button>
+        )}
       </div>
     );
   }
 
-  // Live sits at the far-right (== now).
-  const current = isLive ? maxMs : Math.min(Math.max(asOfMs, minMs), maxMs);
+  // Live sits at the far-right. Ended: default a null asOf to the end (maxMs).
+  const current = isLive
+    ? maxMs
+    : Math.min(Math.max(asOfMs ?? maxMs, minMs), maxMs);
 
   const set = (ms: number) => {
-    if (ms >= maxMs) onChange(null);
-    else onChange(Math.max(minMs, ms));
+    // Active timeline snaps to Live at the far right; ended clamps into window.
+    if (!liveDisabled && ms >= maxMs) onChange(null);
+    else onChange(Math.min(Math.max(minMs, ms), maxMs));
   };
 
   // ‹ / › step back / forward 1 hour (set() clamps to [minMs] and snaps to Live
@@ -101,16 +111,21 @@ export default function IncidentTimeline({
       <span className={`${styles.stampLive}${isLive ? '' : ` ${styles.stampPast}`}`}>
         {isLive ? t('timeline.live') : fmt(current)}
       </span>
-      <button
-        type="button"
-        className={`${styles.liveBtn}${isLive ? ` ${styles.liveActive}` : ''}`}
-        onClick={() => onChange(null)}
-      >
-        {t('timeline.live')}
-      </button>
-      <button type="button" className={styles.close} aria-label={t('common.close')} onClick={onClose}>
-        ✕
-      </button>
+      {/* Ended incidents have no Live and can't be closed (it's the only view). */}
+      {!liveDisabled && (
+        <>
+          <button
+            type="button"
+            className={`${styles.liveBtn}${isLive ? ` ${styles.liveActive}` : ''}`}
+            onClick={() => onChange(null)}
+          >
+            {t('timeline.live')}
+          </button>
+          <button type="button" className={styles.close} aria-label={t('common.close')} onClick={onClose}>
+            ✕
+          </button>
+        </>
+      )}
     </div>
   );
 }
