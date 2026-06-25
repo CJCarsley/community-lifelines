@@ -116,7 +116,7 @@ export default function IncidentCreateControl() {
         setMode('form');
       }
     },
-    [viewRef, kind, typeCode, incidents, name, portalUrl, webMapId, statusTableId, queryClient, setActiveIncidentId, setIsCreating, cleanupSketch, t],
+    [viewRef, kind, typeCode, incidents, name, queryClient, setActiveIncidentId, setIsCreating, cleanupSketch, t],
   );
 
   const startDraw = useCallback(async () => {
