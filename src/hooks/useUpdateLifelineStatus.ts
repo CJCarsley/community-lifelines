@@ -1,11 +1,10 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { fetchAuthSession } from 'aws-amplify/auth';
 import { useMapConfig } from '@contexts/MapConfigContext';
-import { loadStatusTable } from '@features/map/statusTable';
+import { loadStatusTable, COMMUNITY_KEY } from '@features/map/statusTable';
 import type { LifelineId, LifelineStatus } from '@types';
 
 interface UpdateLifelineVars {
-  incidentId: string;
   lifelineId: LifelineId;
   status: LifelineStatus;
   notes?: string;
@@ -16,20 +15,19 @@ interface UpdateLifelineResult {
   status: LifelineStatus;
 }
 
-// Records a lifeline status change for an incident by INSERTING a new timestamped
-// row into the WebMap-owned `lifeline_status` table (append-only / snapshots —
-// never updates in place, so history accumulates for the future snapshot viewer).
+// Records a COMMUNITY lifeline status change by INSERTING a new timestamped row
+// into the WebMap-owned `lifeline_status` table under incidentid = COMMUNITY_KEY
+// (append-only / snapshots — never updates in place, so history accumulates).
 // Routed through the AGE proxy; the service account holds edit privileges.
-// Current status is the latest row per (incidentid, lifeline_id) — see
-// useLifelineStatuses. Invalidates the read query on success.
+// Current status is the latest community row per lifeline_id — see
+// useLifelineStatuses. Invalidates the read + history queries on success.
 export function useUpdateLifelineStatus() {
   const queryClient = useQueryClient();
   const { portalUrl, webMapId, statusTableId } = useMapConfig();
 
   return useMutation<UpdateLifelineResult, Error, UpdateLifelineVars>({
-    mutationFn: async ({ incidentId, lifelineId, status, notes }) => {
+    mutationFn: async ({ lifelineId, status, notes }) => {
       if (!webMapId) throw new Error('Map not configured');
-      if (!incidentId) throw new Error('No incident selected');
 
       const table = await loadStatusTable(portalUrl, webMapId, statusTableId);
       if (!table) throw new Error('lifeline_status table not found');
@@ -39,7 +37,7 @@ export function useUpdateLifelineStatus() {
       const email = session.tokens?.idToken?.payload.email;
 
       const attributes: Record<string, unknown> = {
-        incidentid: incidentId,
+        incidentid: COMMUNITY_KEY,
         lifeline_id: lifelineId,
         status,
         status_updated_at: Date.now(),
@@ -57,6 +55,7 @@ export function useUpdateLifelineStatus() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['lifelineStatuses'] });
+      queryClient.invalidateQueries({ queryKey: ['lifelineStatusHistory'] });
     },
   });
 }

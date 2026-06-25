@@ -44,10 +44,19 @@ export interface Incident {
 
 // A real incident from the Incidents service, keyed by incidentid. One incident
 // may have geometry across the Points/Lines/Areas sublayers (same incidentid).
+//
+// Community lifelines are independent of incidents; an incident now only WINDOWS
+// the history view via its dates:
+//   startDate (reptime)      — incident start; lower bound of the history slider.
+//   endDate   (incidentended) — incident end; non-null ⇒ the incident has ENDED,
+//                               which disables Live and clamps the slider upper
+//                               bound to this time (read-only history).
 export interface IncidentRecord {
   incidentId: string;
   name: string;
   geometryTypes: ('point' | 'line' | 'area')[];
+  startDate: string | null; // ISO 8601
+  endDate: string | null;   // ISO 8601; non-null ⇒ ended
 }
 
 // Active crisis event

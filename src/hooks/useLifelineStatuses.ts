@@ -1,14 +1,14 @@
 import { useQuery, type UseQueryResult } from '@tanstack/react-query';
 import { useMapConfig } from '@contexts/MapConfigContext';
-import { loadStatusTable } from '@features/map/statusTable';
+import { loadStatusTable, COMMUNITY_KEY } from '@features/map/statusTable';
 import { seedLifelineStatus } from '@features/map/seedLifelineStatus';
 import { LIFELINE_IDS } from '@utils/defaultLifelines';
 import { toIsoOrNull, toStringOrNull } from '@utils/arcgisAttrs';
 import type GraphicType from '@arcgis/core/Graphic';
 import type { LifelineId, LifelineStatus } from '@types';
 
-// Generous: 8 lifelines × snapshot history per incident. We only keep the
-// latest per lifeline, but must fetch enough rows to find them.
+// Generous: 8 lifelines × community snapshot history. We only keep the latest
+// per lifeline, but must fetch enough rows to find them.
 const STATUS_QUERY_LIMIT = 2000;
 
 const LIFELINE_ID_SET: ReadonlySet<string> = new Set<string>(LIFELINE_IDS);
@@ -62,39 +62,38 @@ function featureToStatus(
   };
 }
 
-// Live lifeline tile statuses for one incident, from the WebMap-owned
-// `lifeline_status` table.
+// Live COMMUNITY lifeline tile statuses, from the WebMap-owned `lifeline_status`
+// table. Independent of incidents: the same Live status shows no matter which
+// incident is selected.
 //
 // Append-only/snapshots: a status change inserts a NEW timestamped row, so the
 // current status is the LATEST row per lifeline_id (ordered by status_updated_at
-// desc; first seen wins). If the incident has no rows yet, seed 8 `unknown` rows
-// (a pre-existing incident's first selection) and return unknowns.
+// desc; first seen wins) among the community rows (incidentid = COMMUNITY_KEY).
+// If the community table has no rows yet, seed 8 `unknown` rows and return them.
 //
 // VIEWLESS (see loadStatusTable): the strip + mobile home render outside any map.
-export function useLifelineStatuses(
-  incidentId: string | null,
-): UseQueryResult<LifelineStatusMap, Error> {
+export function useLifelineStatuses(): UseQueryResult<LifelineStatusMap, Error> {
   const { portalUrl, webMapId, statusTableId, mapVersion } = useMapConfig();
 
   return useQuery<LifelineStatusMap, Error>({
-    queryKey: ['lifelineStatuses', mapVersion, webMapId, statusTableId, incidentId],
-    enabled: webMapId !== '' && incidentId !== null,
+    queryKey: ['lifelineStatuses', mapVersion, webMapId, statusTableId],
+    enabled: webMapId !== '',
     staleTime: 30_000,
     queryFn: async () => {
       const table = await loadStatusTable(portalUrl, webMapId, statusTableId);
-      if (!table || !incidentId) return {};
+      if (!table) return {};
 
       const result = await table.queryFeatures({
-        where: `incidentid = '${incidentId.replace(/'/g, "''")}'`,
+        where: `incidentid = '${COMMUNITY_KEY}'`,
         outFields: ['*'],
         orderByFields: ['status_updated_at DESC'],
         returnGeometry: false,
         num: STATUS_QUERY_LIMIT,
       });
 
-      // No rows for this incident yet → seed 8 unknowns, then return unknowns.
+      // No community rows yet → seed 8 unknowns, then return unknowns.
       if (result.features.length === 0) {
-        await seedLifelineStatus(table, incidentId);
+        await seedLifelineStatus(table);
         return Object.fromEntries(
           LIFELINE_IDS.map((id) => [
             id,

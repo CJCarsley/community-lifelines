@@ -66,7 +66,9 @@ function StatusRadioOption({ value, label, state }: StatusRadioOptionProps) {
 export interface LifelineDrawerProps {
   lifelineId: LifelineId;
   lifeline: Lifeline;
-  incidentId: string;
+  // Community lifeline status is incident-independent; this is used ONLY to scope
+  // the "Affected incidents" submissions list (null ⇒ show all for the lifeline).
+  incidentId: string | null;
   readOnly?: boolean;
   onClose: () => void;
 }
@@ -135,9 +137,9 @@ export default function LifelineDrawer({
     (status: LifelineStatus) => {
       setLocalStatus(status);
       // Carry current notes so each snapshot row is self-contained.
-      updateMutation.mutate({ incidentId, lifelineId, status, notes: notesRef.current });
+      updateMutation.mutate({ lifelineId, status, notes: notesRef.current });
     },
-    [incidentId, lifelineId, updateMutation],
+    [lifelineId, updateMutation],
   );
 
   const handleNotesChange = (value: string) => {
@@ -145,7 +147,6 @@ export default function LifelineDrawer({
     if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
     saveTimerRef.current = setTimeout(() => {
       updateMutation.mutate({
-        incidentId,
         lifelineId,
         status: localStatusRef.current,
         notes: value,

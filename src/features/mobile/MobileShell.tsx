@@ -18,8 +18,9 @@ interface MobileShellProps {
     open: boolean;
     asOfMs: number | null;
     viewingHistory: boolean;
-    timestamps: number[];
-    nowMs: number;
+    minMs: number;
+    maxMs: number;
+    liveDisabled: boolean;
     onChange: (ms: number | null) => void;
     onClose: () => void;
   };
@@ -47,9 +48,10 @@ export default function MobileShell({
       {history.open && (
         <div className={styles.timelineRow}>
           <IncidentTimeline
-            minMs={history.timestamps[0] ?? 0}
-            maxMs={history.nowMs}
+            minMs={history.minMs}
+            maxMs={history.maxMs}
             asOfMs={history.asOfMs}
+            liveDisabled={history.liveDisabled}
             onChange={history.onChange}
             onClose={history.onClose}
           />
@@ -58,12 +60,13 @@ export default function MobileShell({
 
       <div className={styles.content}>
         {effectiveTab === 'overview' &&
-          (activeLifeline !== null && activeIncident !== null && lifelines !== null ? (
+          (activeLifeline !== null && lifelines !== null ? (
             <MobileLifelinePage
               key={activeLifeline}
               lifelineId={activeLifeline}
               lifeline={lifelines[activeLifeline]}
-              incidentId={activeIncident.incidentId}
+              incidentId={activeIncident?.incidentId ?? null}
+              readOnly={history.viewingHistory}
               onBack={() => setActiveLifeline(null)}
             />
           ) : (

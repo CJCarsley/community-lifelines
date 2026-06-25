@@ -4,6 +4,13 @@ import type FeatureLayerType from '@arcgis/core/layers/FeatureLayer';
 // Title MapView discovery walks for; fallback when the id isn't resolved yet.
 const STATUS_TABLE_TITLE = 'lifeline_status';
 
+// Reserved `incidentid` for community-wide lifeline status rows. Lifelines are
+// per-community (not per-incident): all reads/writes use this key, so legacy
+// per-incident rows are simply ignored ("start fresh") and history is windowed
+// purely by status_updated_at. (Underscores chosen to never collide with the
+// numeric incidentids this deployment uses.)
+export const COMMUNITY_KEY = '__community__';
+
 // Loads the WebMap-owned `lifeline_status` table WITHOUT a MapView. Used by the
 // status read hook (strip/home render outside any map) and the write mutation.
 export async function loadStatusTable(

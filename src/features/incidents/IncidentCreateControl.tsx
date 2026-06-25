@@ -2,13 +2,11 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useQueryClient } from '@tanstack/react-query';
 import { useMapView } from '@features/map/useMapView';
-import { useMapConfig } from '@contexts/MapConfigContext';
 import { useIncidentContext } from '@contexts/IncidentContext';
-import { loadStatusTable } from '@features/map/statusTable';
-import { seedLifelineStatus } from '@features/map/seedLifelineStatus';
 import {
   findIncidentSublayers,
   nextIncidentId,
+  INCIDENT_START_FIELD,
   type IncidentGeometryKind,
 } from './incidentLayers';
 import { startIncidentSketch, type SketchSession } from './incidentSketch';
@@ -25,7 +23,6 @@ export default function IncidentCreateControl() {
   const { t } = useTranslation();
   const queryClient = useQueryClient();
   const { ref: viewRef, isReady } = useMapView();
-  const { portalUrl, webMapId, statusTableId } = useMapConfig();
   const { incidents, setActiveIncidentId, isCreating, setIsCreating } = useIncidentContext();
   const { types } = useIncidentTypes();
 
@@ -87,6 +84,11 @@ export default function IncidentCreateControl() {
           incidentid: id,
           incidentnm: name.trim(),
         };
+        // Report Time = incident start (drives the history slider's lower bound).
+        const hasStartField = layer.fields?.some(
+          (f) => f.name.toLowerCase() === INCIDENT_START_FIELD,
+        );
+        if (hasStartField) attributes[INCIDENT_START_FIELD] = Date.now();
         // Only set incidenttp on a layer that actually has the field.
         const hasTypeField = layer.fields?.some(
           (f) => f.name.toLowerCase() === INCIDENT_TYPE_FIELD,
@@ -99,12 +101,9 @@ export default function IncidentCreateControl() {
         const added = result.addFeatureResults?.[0];
         if (added?.error) throw new Error(added.error.message);
 
-        // Seed the 8 unknown lifeline_status rows for the new incident.
-        const table = await loadStatusTable(portalUrl, webMapId, statusTableId);
-        if (table) await seedLifelineStatus(table, id);
-
+        // Lifeline status is community-wide now — creating an incident does NOT
+        // seed or touch it. Incidents only window the history view.
         await queryClient.invalidateQueries({ queryKey: ['incidents'] });
-        void queryClient.invalidateQueries({ queryKey: ['lifelineStatuses'] });
 
         cleanupSketch();
         setActiveIncidentId(id);
@@ -117,7 +116,7 @@ export default function IncidentCreateControl() {
         setMode('form');
       }
     },
-    [viewRef, kind, typeCode, incidents, name, portalUrl, webMapId, statusTableId, queryClient, setActiveIncidentId, setIsCreating, cleanupSketch, t],
+    [viewRef, kind, typeCode, incidents, name, queryClient, setActiveIncidentId, setIsCreating, cleanupSketch, t],
   );
 
   const startDraw = useCallback(async () => {

@@ -1,13 +1,13 @@
 import { LIFELINE_IDS } from '@utils/defaultLifelines';
+import { COMMUNITY_KEY } from '@features/map/statusTable';
 import type FeatureLayerType from '@arcgis/core/layers/FeatureLayer';
 
-// Seeds the 8 lifeline_status rows for an incident, all `unknown` and
-// timestamped. Used when a row-less incident is first selected and when a new
-// incident is created (Phase 3). Append-only: callers must ensure the incident
-// has no rows yet (seeding twice would duplicate).
+// Seeds the 8 community lifeline_status rows, all `unknown` and timestamped.
+// Used ONCE when the community table has no rows yet. Append-only: callers must
+// ensure no community rows exist (seeding twice would duplicate).
 export async function seedLifelineStatus(
   table: FeatureLayerType,
-  incidentId: string,
+  key: string = COMMUNITY_KEY,
 ): Promise<void> {
   const { default: Graphic } = await import('@arcgis/core/Graphic');
   const now = Date.now();
@@ -16,7 +16,7 @@ export async function seedLifelineStatus(
     (id) =>
       new Graphic({
         attributes: {
-          incidentid: incidentId,
+          incidentid: key,
           lifeline_id: id,
           status: 'unknown',
           status_updated_at: now,
